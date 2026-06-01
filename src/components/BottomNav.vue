@@ -148,7 +148,44 @@ function getIcon(name) {
 
 @media (min-width: 768px) {
   .bottom-nav {
-    display: none;
+    position: fixed;
+    top: 0;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    border-top: none;
+    border-bottom: var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    z-index: 100;
+    padding-bottom: 0;
+  }
+
+  .nav-container {
+    justify-content: center;
+    gap: var(--space-lg);
+    padding: var(--space-sm) var(--space-lg);
+  }
+
+  .nav-item {
+    flex-direction: row;
+    gap: 6px;
+    padding: 8px 16px;
+    min-width: auto;
+    border-radius: var(--radius-md);
+  }
+
+  .nav-item:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .nav-item.active {
+    background: rgba(0, 122, 255, 0.12);
+  }
+
+  .nav-label {
+    font-size: 13px;
   }
 }
 </style>

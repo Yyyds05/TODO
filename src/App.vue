@@ -13,6 +13,7 @@ const currentDate = computed(() => {
 })
 
 const showHeader = computed(() => route.path !== '/settings')
+const isDesktop = ref(window.innerWidth >= 768)
 
 // 页面切换动画控制
 const transitionName = ref('fade')
@@ -58,7 +59,7 @@ const closeWelcome = () => {
     </transition>
 
     <!-- 顶部标题栏 -->
-    <header v-if="showHeader" class="app-header">
+    <header v-if="showHeader && !isDesktop" class="app-header">
       <div class="header-content">
         <h1 class="app-title">SkyDesk</h1>
         <span class="current-date">{{ currentDate }}</span>
@@ -122,6 +123,7 @@ const closeWelcome = () => {
 .app-main {
   flex: 1;
   padding: var(--space-lg);
+  padding-top: calc(var(--space-lg) + 56px);
   padding-bottom: 100px;
   max-width: 800px;
   margin: 0 auto;
