@@ -161,8 +161,14 @@ async function handleSubmit() {
   isSubmitting.value = true
   
   try {
+    // 如果有解析结果，使用解析后的标题（去除时间部分）
+    let finalTitle = form.value.title
+    if (parsedResult.value && parsedResult.value.title) {
+      finalTitle = parsedResult.value.title
+    }
+    
     await addReminder({
-      title: form.value.title,
+      title: finalTitle,
       datetime: form.value.datetime,
       priority: form.value.priority,
       tag: form.value.tag,
