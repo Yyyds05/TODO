@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDateTimeLocal, addReminder, settings, tags, repeatOptions } from '../stores/reminderStore.js'
 import { parseNaturalLanguage, formatDateTimeLocal as formatDateTime } from '../utils/naturalLanguageParser.js'
+import { safeGet } from '../utils/safeStorage.js'
 
 const emit = defineEmits(['added'])
 const router = useRouter()
@@ -95,7 +96,7 @@ function validate() {
   } else {
     const selectedTime = new Date(form.value.datetime)
     if (selectedTime <= new Date()) {
-      errors.value.datetime = '提醒时间必须在未来'
+      errors.value.datetime = '请选择未来的时间'
     }
   }
   
@@ -164,7 +165,7 @@ const aiError = ref('')
 
 // 切换 AI 输入区域
 function toggleAIInput() {
-  const apiKey = localStorage.getItem('deepseek_api_key')
+  const apiKey = safeGet('deepseek_api_key')
   if (!apiKey) {
     alert('请先在设置页面配置DeepSeek API密钥')
     return
@@ -177,7 +178,7 @@ function toggleAIInput() {
 async function generateWithAI() {
   if (!aiInput.value.trim()) return
   
-  const apiKey = localStorage.getItem('deepseek_api_key')
+  const apiKey = safeGet('deepseek_api_key')
   if (!apiKey) {
     alert('请先在设置页面配置DeepSeek API密钥')
     return

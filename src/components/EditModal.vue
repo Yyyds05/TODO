@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { updateReminder, tags, repeatOptions, formatDateTimeLocal } from '../stores/reminderStore.js'
+import { safeGet } from '../utils/safeStorage.js'
 
 const props = defineProps({
   reminder: {
@@ -47,7 +48,7 @@ const priorities = [
 
 // AI 重写标题
 async function handleRewriteTitle() {
-  const apiKey = localStorage.getItem('deepseek_api_key')
+  const apiKey = safeGet('deepseek_api_key')
   if (!apiKey) {
     alert('请先在设置页面配置DeepSeek API密钥')
     return
@@ -148,6 +149,11 @@ function validate() {
   
   if (!form.value.datetime) {
     errors.value.datetime = '请选择提醒时间'
+  } else {
+    const selectedTime = new Date(form.value.datetime)
+    if (selectedTime <= new Date()) {
+      errors.value.datetime = '请选择未来的时间'
+    }
   }
   
   return Object.keys(errors.value).length === 0

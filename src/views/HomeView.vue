@@ -10,6 +10,7 @@ import QuickAddModal from '../components/QuickAddModal.vue'
 import { loadReminders, reminders } from '../stores/reminderStore.js'
 import { reminderAlarm, requestNotificationPermission } from '../services/reminderAlarm.js'
 import eventBus from '../utils/eventBus.js'
+import { safeGet, safeSet } from '../utils/safeStorage.js'
 
 // 当前正在编辑的提醒
 const editingReminder = ref(null)
@@ -39,7 +40,7 @@ function handleReminderAdded(reminder) {
   
   // 首次添加提醒后显示通知权限提示条
   // 检查localStorage，如果用户之前点击过"稍后"或拒绝过，就不再显示
-  const hasPromptShown = localStorage.getItem('notificationPromptShown')
+  const hasPromptShown = safeGet('notificationPromptShown')
   if (!hasPromptShown && reminderAlarm.getNotificationPermission() === 'default') {
     showNotificationBanner.value = true
   }
@@ -58,14 +59,14 @@ async function handleAllowNotification() {
   }
   
   // 无论用户同意还是拒绝，都标记为已显示，关闭提示条
-  localStorage.setItem('notificationPromptShown', 'true')
+  safeSet('notificationPromptShown', 'true')
   showNotificationBanner.value = false
 }
 
 // 稍后处理通知权限
 function handleDismissNotification() {
   // 标记为已显示，以后不再弹出
-  localStorage.setItem('notificationPromptShown', 'true')
+  safeSet('notificationPromptShown', 'true')
   showNotificationBanner.value = false
 }
 

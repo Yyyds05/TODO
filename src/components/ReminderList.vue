@@ -52,6 +52,7 @@ const filteredCompleted = computed(() => {
 // 按日期分组
 const groupedReminders = computed(() => {
   const groups = {
+    overdue: [],  // 过期任务
     today: [],
     tomorrow: [],
     future: [],
@@ -69,7 +70,10 @@ const groupedReminders = computed(() => {
   filteredUpcoming.value.forEach(reminder => {
     const dt = new Date(reminder.datetime)
     
-    if (dt >= today && dt < tomorrow) {
+    // 过期任务单独分组并置顶
+    if (dt < now) {
+      groups.overdue.push(reminder)
+    } else if (dt >= today && dt < tomorrow) {
       groups.today.push(reminder)
     } else if (dt >= tomorrow && dt < dayAfterTomorrow) {
       groups.tomorrow.push(reminder)
@@ -263,6 +267,33 @@ async function handleSwipeDelete(reminder) {
 
     <!-- 全部视图 -->
     <template v-else>
+      <!-- 已过期提醒（置顶显示） -->
+      <section v-if="groupedReminders.overdue.length > 0" class="list-section">
+        <h3 class="section-title overdue-title">
+          <svg class="section-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          已过期
+          <span class="count overdue-count">{{ groupedReminders.overdue.length }}</span>
+        </h3>
+        <TransitionGroup name="list-item" tag="div" class="items">
+          <SwipeableItem
+            v-for="reminder in groupedReminders.overdue"
+            :key="reminder.id"
+            :item="reminder"
+            @complete="handleSwipeComplete"
+            @delete="handleSwipeDelete"
+          >
+            <ReminderItem
+              :reminder="reminder"
+              @edit="handleEdit"
+            />
+          </SwipeableItem>
+        </TransitionGroup>
+      </section>
+
       <!-- 今日提醒 -->
       <section v-if="groupedReminders.today.length > 0" class="list-section">
         <h3 class="section-title">
@@ -585,6 +616,20 @@ async function handleSwipeDelete(reminder) {
 
 .completed-section .section-title {
   color: var(--text-secondary);
+}
+
+/* 过期任务标题 */
+.overdue-title {
+  color: var(--accent-red) !important;
+}
+
+.overdue-title .section-icon {
+  color: var(--accent-red);
+}
+
+.overdue-count {
+  background: rgba(255, 59, 48, 0.15);
+  color: var(--accent-red);
 }
 
 .empty-state {

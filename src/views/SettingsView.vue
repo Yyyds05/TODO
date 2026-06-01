@@ -9,6 +9,7 @@ import {
   tags
 } from '../stores/reminderStore.js'
 import { reminderAlarm } from '../services/reminderAlarm.js'
+import { safeGet, safeSet } from '../utils/safeStorage.js'
 
 // 导入文件输入
 const fileInput = ref(null)
@@ -19,7 +20,7 @@ const showApiKey = ref(false)
 
 // 从 localStorage 读取 API 密钥
 onMounted(() => {
-  const savedKey = localStorage.getItem('deepseek_api_key')
+  const savedKey = safeGet('deepseek_api_key')
   if (savedKey) {
     deepseekApiKey.value = savedKey
   }
@@ -27,7 +28,7 @@ onMounted(() => {
 
 // 保存 API 密钥
 function saveApiKey() {
-  localStorage.setItem('deepseek_api_key', deepseekApiKey.value)
+  safeSet('deepseek_api_key', deepseekApiKey.value)
   alert('保存成功！')
 }
 
@@ -72,19 +73,38 @@ async function handleFileChange(event) {
   const file = event.target.files?.[0]
   if (!file) return
   
+  // 检查文件类型
+  if (!file.name.endsWith('.json')) {
+    alert('请选择 .json 格式的备份文件')
+    event.target.value = ''
+    return
+  }
+  
   try {
     const text = await file.text()
+    
+    // 二次确认
+    const confirmed = confirm(
+      '导入数据将会覆盖当前所有提醒、标签和设置。\n' +
+      '此操作不可撤销，建议先导出当前数据作为备份。\n\n' +
+      '确定要导入吗？'
+    )
+    if (!confirmed) {
+      event.target.value = ''
+      return
+    }
+    
     const success = await importData(text)
     
     if (success) {
-      alert('数据导入成功！')
+      alert('数据导入成功！页面将刷新。')
       window.location.reload()
     } else {
-      alert('数据导入失败，请检查文件格式')
+      alert('数据导入失败，请检查文件格式是否正确')
     }
   } catch (err) {
     console.error('导入失败:', err)
-    alert('数据导入失败，请检查文件格式')
+    alert('数据导入失败：' + (err.message || '请检查文件格式是否正确'))
   }
   
   // 清空 input 以便可以再次选择同一文件

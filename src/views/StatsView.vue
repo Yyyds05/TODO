@@ -5,6 +5,7 @@ import StatsCard from '../components/StatsCard.vue'
 import TagDistribution from '../components/TagDistribution.vue'
 import WeeklyTrend from '../components/WeeklyTrend.vue'
 import { reminders, tags, reminderStats } from '../stores/reminderStore.js'
+import { safeGet, safeSet, safeRemove } from '../utils/safeStorage.js'
 
 const router = useRouter()
 
@@ -98,11 +99,11 @@ const weeklyStats = computed(() => {
 
 // 获取或生成 AI 洞察
 async function getAIInsights() {
-  const apiKey = localStorage.getItem('deepseek_api_key')
+  const apiKey = safeGet('deepseek_api_key')
   if (!apiKey) return
   
   // 检查是否需要重新生成（每周一）
-  const lastGenerated = localStorage.getItem('ai_insights_last_date')
+  const lastGenerated = safeGet('ai_insights_last_date')
   const today = new Date().toDateString()
   
   if (lastGenerated === today && aiInsights.value.length > 0) {
@@ -155,8 +156,8 @@ async function getAIInsights() {
     
     if (result.insights && Array.isArray(result.insights)) {
       aiInsights.value = result.insights
-      localStorage.setItem('ai_insights_last_date', today)
-      localStorage.setItem('ai_insights_data', JSON.stringify(result.insights))
+      safeSet('ai_insights_last_date', today)
+      safeSet('ai_insights_data', JSON.stringify(result.insights))
     }
     
   } catch (err) {
@@ -168,7 +169,7 @@ async function getAIInsights() {
 
 // 手动刷新洞察
 async function refreshInsights() {
-  localStorage.removeItem('ai_insights_last_date')
+  safeRemove('ai_insights_last_date')
   await getAIInsights()
 }
 

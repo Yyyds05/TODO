@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { formatDateTime, getPriorityInfo, getTagInfo, getRepeatInfo, toggleComplete, deleteReminder } from '../stores/reminderStore.js'
+import { safeGet } from '../utils/safeStorage.js'
 
 const props = defineProps({
   reminder: {
@@ -22,6 +23,22 @@ const repeatInfo = computed(() => {
 })
 
 const formattedTime = computed(() => formatDateTime(props.reminder.datetime))
+
+// 判断是否已过期
+const isOverdue = computed(() => {
+  if (props.reminder.completed) return false
+  const dt = new Date(props.reminder.datetime)
+  return dt < new Date()
+})
+
+// 判断是否即将到期（1小时内）
+const isExpiringSoon = computed(() => {
+  if (props.reminder.completed) return false
+  const dt = new Date(props.reminder.datetime)
+  const now = new Date()
+  const oneHour = 60 * 60 * 1000
+  return dt >= now && dt <= new Date(now.getTime() + oneHour)
+})
 
 // 动画状态
 const showRipple = ref(false)
@@ -66,12 +83,12 @@ function handleEdit() {
 
 // AI 拆分子任务
 function handleAISplit() {
-  const apiKey = localStorage.getItem('deepseek_api_key')
+  const apiKey = safeGet('deepseek_api_key')
   if (!apiKey) {
     alert('请先在设置页面配置DeepSeek API密钥')
     return
   }
-  
+
   if (confirm('AI将为你拆解这个任务为3-5个可执行的子任务')) {
     generateSubtasks()
   }
@@ -79,9 +96,9 @@ function handleAISplit() {
 
 async function generateSubtasks() {
   isGeneratingSubtasks.value = true
-  
+
   try {
-    const apiKey = localStorage.getItem('deepseek_api_key')
+    const apiKey = safeGet('deepseek_api_key')
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -149,7 +166,7 @@ function toggleSubtasksList() {
 </script>
 
 <template>
-  <div class="reminder-item" :class="{ completed: reminder.completed, 'completing': showRipple }">
+  <div class="reminder-item" :class="{ completed: reminder.completed, 'completing': showRipple, 'is-overdue': isOverdue, 'is-expiring': isExpiringSoon }">
     <div class="reminder-item-main">
       <div class="checkbox-wrapper">
       <input
@@ -171,6 +188,9 @@ function toggleSubtasksList() {
     <div class="content" @click="handleToggleComplete">
       <div class="title-row">
         <span class="title">{{ reminder.title }}</span>
+        <!-- 过期/即将到期标签 -->
+        <span v-if="isOverdue" class="status-badge overdue-badge">已过期</span>
+        <span v-else-if="isExpiringSoon" class="status-badge expiring-badge">即将到期</span>
         <span v-if="tagInfo" class="tag-badge" :style="{ backgroundColor: tagInfo.color + '20', color: tagInfo.color }">
           {{ tagInfo.icon }} {{ tagInfo.name }}
         </span>
@@ -344,6 +364,39 @@ function toggleSubtasksList() {
 .reminder-item[data-priority="high"] {
   border-left: 2px solid var(--accent-red);
   padding-left: calc(var(--space-md) - 2px);
+}
+
+/* 过期任务样式 */
+.reminder-item.is-overdue {
+  border-left: 3px solid var(--accent-red) !important;
+  background: rgba(255, 59, 48, 0.04);
+}
+
+.reminder-item.is-expiring {
+  border-left: 3px solid var(--accent-orange) !important;
+  background: rgba(255, 149, 0, 0.04);
+}
+
+/* 状态标签 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.overdue-badge {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--accent-red);
+}
+
+.expiring-badge {
+  background: rgba(255, 149, 0, 0.12);
+  color: var(--accent-orange);
 }
 
 /* 完成时的缩放动画 */

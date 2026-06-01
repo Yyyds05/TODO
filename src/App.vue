@@ -3,6 +3,7 @@ import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
 import Toast from './components/Toast.vue'
+import { safeGet, safeSet } from './utils/safeStorage.js'
 
 const route = useRoute()
 
@@ -23,20 +24,20 @@ const showWelcome = ref(false)
 
 onMounted(() => {
   // 检查是否是首次访问
-  const hasVisited = localStorage.getItem('skydesk-visited')
+  const hasVisited = safeGet('skydesk-visited')
   if (!hasVisited) {
     showWelcome.value = true
     // 3秒后自动隐藏
     setTimeout(() => {
       showWelcome.value = false
-      localStorage.setItem('skydesk-visited', 'true')
+      safeSet('skydesk-visited', 'true')
     }, 3000)
   }
 })
 
 const closeWelcome = () => {
   showWelcome.value = false
-  localStorage.setItem('skydesk-visited', 'true')
+  safeSet('skydesk-visited', 'true')
 }
 </script>
 

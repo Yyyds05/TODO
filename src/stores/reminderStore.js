@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { reminderService, settingsService, tagService, pomodoroService } from '../services/db.js'
 import eventBus from '../utils/eventBus.js'
 import { reminderAlarm } from '../services/reminderAlarm.js'
+import { safeGet, safeSet } from '../utils/safeStorage.js'
 
 // ==================== 常量定义 ====================
 
@@ -580,15 +581,27 @@ export async function getPomodoroStats() {
  * @returns {string} JSON 格式的数据
  */
 export function exportData() {
-  const data = {
-    reminders: reminders.value,
-    tags: tags.value,
-    settings: settings.value,
-    pomodoroRecords: pomodoroRecords.value,
-    exportDate: new Date().toISOString(),
-    version: '2.0'
+  try {
+    const data = {
+      reminders: reminders.value,
+      tags: tags.value,
+      settings: settings.value,
+      pomodoroRecords: pomodoroRecords.value,
+      // 也导出 localStorage 中的数据
+      localStorageData: {
+        deepseek_api_key: safeGet('deepseek_api_key') || '',
+        ai_insights_data: safeGet('ai_insights_data') || '',
+        ai_insights_last_date: safeGet('ai_insights_last_date') || '',
+        skydesk_visited: safeGet('skydesk-visited') || ''
+      },
+      exportDate: new Date().toISOString(),
+      version: '2.0'
+    }
+    return JSON.stringify(data, null, 2)
+  } catch (err) {
+    console.error('导出数据失败:', err)
+    throw new Error('导出数据失败：' + (err.message || '未知错误'))
   }
-  return JSON.stringify(data, null, 2)
 }
 
 /**
@@ -602,24 +615,57 @@ export async function importData(jsonData) {
     
     // 验证数据格式
     if (!data.reminders || !Array.isArray(data.reminders)) {
-      throw new Error('无效的数据格式：缺少 reminders')
+      throw new Error('无效的数据格式：缺少 reminders 数组')
+    }
+    
+    if (data.version && parseFloat(data.version) > 2.0) {
+      throw new Error('数据版本不兼容，请使用 SkyDesk 2.x 导出的备份文件')
     }
     
     // 导入提醒
     for (const reminder of data.reminders) {
-      await reminderService.create(reminder)
+      try {
+        await reminderService.create(reminder)
+      } catch (e) {
+        console.warn('导入单条提醒失败，跳过:', e)
+      }
     }
     
     // 导入标签
     if (data.tags && Array.isArray(data.tags)) {
       for (const tag of data.tags) {
-        await tagService.create(tag)
+        try {
+          await tagService.create(tag)
+        } catch (e) {
+          console.warn('导入单条标签失败，跳过:', e)
+        }
       }
     }
     
     // 导入设置
     if (data.settings) {
-      await settingsService.update(data.settings)
+      try {
+        await settingsService.update(data.settings)
+      } catch (e) {
+        console.warn('导入设置失败，跳过:', e)
+      }
+    }
+    
+    // 导入 localStorage 数据
+    if (data.localStorageData) {
+      try {
+        if (data.localStorageData.deepseek_api_key) {
+          safeSet('deepseek_api_key', data.localStorageData.deepseek_api_key)
+        }
+        if (data.localStorageData.ai_insights_data) {
+          safeSet('ai_insights_data', data.localStorageData.ai_insights_data)
+        }
+        if (data.localStorageData.ai_insights_last_date) {
+          safeSet('ai_insights_last_date', data.localStorageData.ai_insights_last_date)
+        }
+      } catch (e) {
+        console.warn('导入 localStorage 数据失败，跳过:', e)
+      }
     }
     
     // 重新加载数据
@@ -630,7 +676,10 @@ export async function importData(jsonData) {
     return true
   } catch (err) {
     console.error('导入数据失败:', err)
-    return false
+    if (err instanceof SyntaxError) {
+      throw new Error('文件格式错误：不是有效的 JSON 文件，请检查文件是否损坏')
+    }
+    throw err
   }
 }
 
