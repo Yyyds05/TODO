@@ -5,9 +5,11 @@ import PomodoroHistory from '../components/PomodoroHistory.vue'
 import { 
   pomodoroRecords, 
   todayPomodoroStats, 
-  loadPomodoroRecords, 
+  loadPomodoroRecords,
   addPomodoroRecord,
-  getPomodoroStats
+  getPomodoroStats,
+  upcomingReminders,
+  toggleComplete
 } from '../stores/reminderStore.js'
 
 // 统计数据
@@ -16,6 +18,9 @@ const stats = ref({
   totalMinutes: 0,
   streakDays: 0
 })
+
+// 关联的任务
+const selectedTask = ref(null)
 
 // 计算今日专注时长（分钟）
 const todayFocusMinutes = computed(() => {
@@ -27,9 +32,27 @@ const todayFocusCount = computed(() => {
   return todayPomodoroStats.value.count
 })
 
+// 获取可关联的任务列表（未完成的）
+const availableTasks = computed(() => {
+  return upcomingReminders.value.slice(0, 10) // 最多显示10个
+})
+
 // 处理专注完成
 async function handleComplete(record) {
-  await addPomodoroRecord(record)
+  // 如果有关联的任务，标记为完成
+  if (selectedTask.value) {
+    try {
+      await toggleComplete(selectedTask.value.id)
+      selectedTask.value = null
+    } catch (e) {
+      console.warn('标记任务完成失败:', e)
+    }
+  }
+  
+  await addPomodoroRecord({
+    ...record,
+    task: selectedTask.value?.title || record.task
+  })
   await refreshStats()
 }
 
@@ -80,6 +103,20 @@ onMounted(async () => {
 
     <!-- 番茄计时器 -->
     <section class="timer-section">
+      <!-- 关联任务选择 -->
+      <div class="task-selector">
+        <label>专注任务（可选）</label>
+        <select v-model="selectedTask" class="task-select">
+          <option :value="null">不关联任务</option>
+          <option 
+            v-for="task in availableTasks" 
+            :key="task.id" 
+            :value="task"
+          >
+            {{ task.title.substring(0, 20) }}{{ task.title.length > 20 ? '...' : '' }}
+          </option>
+        </select>
+      </div>
       <PomodoroTimer 
         @complete="handleComplete"
         @skip="handleSkip"
@@ -151,8 +188,42 @@ onMounted(async () => {
 /* 计时器区域 */
 .timer-section {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
   padding: 0 20px;
+}
+
+/* 任务选择器 */
+.task-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.task-selector label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.task-select {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.task-select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
 }
 
 /* 统计区域 */

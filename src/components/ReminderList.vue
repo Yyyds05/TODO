@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import ReminderItem from './ReminderItem.vue'
 import SwipeableItem from './SwipeableItem.vue'
-import { upcomingReminders, todayReminders, completedReminders, tags, toggleComplete, deleteReminder } from '../stores/reminderStore.js'
+import { upcomingReminders, todayReminders, completedReminders, tags, toggleComplete, deleteReminder, reminders } from '../stores/reminderStore.js'
 
 const emit = defineEmits(['edit'])
 const router = useRouter()
@@ -16,6 +16,86 @@ const activeFilter = ref('')
 
 // 搜索关键词
 const searchQuery = ref('')
+
+// 批量选择状态
+const selectedReminders = ref(new Set())
+const isBatchMode = ref(false)
+
+// 切换批量选择模式
+function toggleBatchMode() {
+  isBatchMode.value = !isBatchMode.value
+  if (!isBatchMode.value) {
+    selectedReminders.value.clear()
+  }
+}
+
+// 切换选择状态
+function toggleSelect(reminderId) {
+  if (selectedReminders.value.has(reminderId)) {
+    selectedReminders.value.delete(reminderId)
+  } else {
+    selectedReminders.value.add(reminderId)
+  }
+  // 触发响应式更新
+  selectedReminders.value = new Set(selectedReminders.value)
+}
+
+// 全选当前可见的已完成任务
+function selectAllCompleted() {
+  groupedReminders.value.completed.forEach(r => {
+    selectedReminders.value.add(r.id)
+  })
+  selectedReminders.value = new Set(selectedReminders.value)
+}
+
+// 批量完成选中任务
+async function batchComplete() {
+  const selected = Array.from(selectedReminders.value)
+  for (const id of selected) {
+    try {
+      await toggleComplete(id)
+    } catch (e) {
+      console.warn('批量完成失败:', id, e)
+    }
+  }
+  selectedReminders.value.clear()
+  isBatchMode.value = false
+}
+
+// 批量删除选中任务
+async function batchDelete() {
+  if (!confirm(`确定要删除选中的 ${selectedReminders.value.size} 个任务吗？`)) return
+  
+  const selected = Array.from(selectedReminders.value)
+  for (const id of selected) {
+    try {
+      await deleteReminder(id)
+    } catch (e) {
+      console.warn('批量删除失败:', id, e)
+    }
+  }
+  selectedReminders.value.clear()
+  isBatchMode.value = false
+}
+
+// 清空所有已完成任务
+async function clearAllCompleted() {
+  const completed = reminders.value.filter(r => r.completed)
+  if (completed.length === 0) {
+    alert('没有已完成的提醒')
+    return
+  }
+  
+  if (!confirm(`确定要清空所有 ${completed.length} 个已完成的任务吗？`)) return
+  
+  for (const reminder of completed) {
+    try {
+      await deleteReminder(reminder.id)
+    } catch (e) {
+      console.warn('清空失败:', reminder.id, e)
+    }
+  }
+}
 
 // 搜索匹配函数
 const matchesSearch = (reminder) => {
@@ -396,6 +476,24 @@ async function handleSwipeDelete(reminder) {
         已完成
         <span class="count">{{ groupedReminders.completed.length }}</span>
       </h3>
+      <!-- 批量操作工具栏 -->
+      <div class="batch-toolbar">
+        <button class="batch-btn" @click="toggleBatchMode">
+          {{ isBatchMode ? '取消选择' : '批量操作' }}
+        </button>
+        <template v-if="isBatchMode">
+          <button class="batch-btn" @click="selectAllCompleted">全选</button>
+          <button class="batch-btn" @click="batchComplete" :disabled="selectedReminders.size === 0">
+            完成 ({{ selectedReminders.size }})
+          </button>
+          <button class="batch-btn danger" @click="batchDelete" :disabled="selectedReminders.size === 0">
+            删除 ({{ selectedReminders.size }})
+          </button>
+        </template>
+        <button v-else class="batch-btn danger" @click="clearAllCompleted">
+          清空已完成
+        </button>
+      </div>
       <TransitionGroup name="list-item" tag="div" class="items">
         <SwipeableItem
           v-for="reminder in groupedReminders.completed"
@@ -404,6 +502,10 @@ async function handleSwipeDelete(reminder) {
           @complete="handleSwipeComplete"
           @delete="handleSwipeDelete"
         >
+          <!-- 批量选择复选框 -->
+          <div v-if="isBatchMode" class="batch-checkbox" @click.stop="toggleSelect(reminder.id)">
+            <input type="checkbox" :checked="selectedReminders.has(reminder.id)" />
+          </div>
           <ReminderItem
             :reminder="reminder"
             @edit="handleEdit"
@@ -696,7 +798,71 @@ async function handleSwipeDelete(reminder) {
   .reminder-list {
     gap: var(--space-md);
   }
-  
+}
+
+/* 批量操作样式 */
+.batch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  margin-bottom: var(--space-sm);
+}
+
+.batch-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.batch-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.batch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.batch-btn.danger {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.batch-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 59, 48, 0.1);
+}
+
+.batch-checkbox {
+  position: absolute;
+  left: var(--space-md);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.batch-checkbox input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent-blue);
+}
+
+.reminder-card {
+  position: relative;
+  padding-left: calc(var(--space-md) + 24px);
+}
+
+.reminder-card.completed .reminder-card {
+  padding-left: calc(var(--space-md) + 24px);
+}
+
+@media (max-width: 640px) {
   .list-section {
     padding: var(--space-md);
   }
