@@ -3,6 +3,7 @@ import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
 import Toast from './components/Toast.vue'
+import AIAssistant from './components/AIAssistant.vue'
 import { safeGet, safeSet } from './utils/safeStorage.js'
 
 const route = useRoute()
@@ -78,6 +79,9 @@ const closeWelcome = () => {
     
     <!-- 底部导航 -->
     <BottomNav />
+    
+    <!-- AI助手 -->
+    <AIAssistant />
   </div>
 </template>
 
