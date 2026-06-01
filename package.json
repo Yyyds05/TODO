@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.3",
     "mitt": "^3.0.1",

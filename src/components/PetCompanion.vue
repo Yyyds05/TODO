@@ -158,8 +158,24 @@ const fullInput = ref('')
 const quickChatRef = ref(null)
 const fullChatRef = ref(null)
 
-// 桌宠图片
-const petImage = ref(safeGet('pet_companion_image', ''))
+// 桌宠图片（优先使用抠图后的透明底图片）
+const petImage = ref('')
+const petImageRemoved = ref('')
+
+// 初始化桌宠图片
+function initPetImage() {
+  // 优先读取抠图后的透明底图片
+  petImageRemoved.value = safeGet('pet_companion_image_removed', '')
+  const originalImage = safeGet('pet_companion_image_original', '')
+  
+  if (petImageRemoved.value) {
+    petImage.value = petImageRemoved.value
+  } else if (originalImage) {
+    petImage.value = originalImage
+  } else {
+    petImage.value = ''
+  }
+}
 
 // 桌宠位置
 const petPosition = ref({
@@ -190,16 +206,23 @@ const currentBubble = ref('')
 // 监听 localStorage 变化（其他页面可能更新了桌宠图片）
 let storageListener = null
 onMounted(() => {
+  // 初始化
+  initPetImage()
+  
   storageListener = () => {
-    petImage.value = safeGet('pet_companion_image', '')
+    initPetImage()
   }
   window.addEventListener('storage', storageListener)
 
   // 定时检查（兼容同页面更新）
   const timer = setInterval(() => {
-    const newImage = safeGet('pet_companion_image', '')
-    if (newImage !== petImage.value) {
-      petImage.value = newImage
+    const removedImage = safeGet('pet_companion_image_removed', '')
+    const originalImage = safeGet('pet_companion_image_original', '')
+    
+    // 检查是否有更新
+    if (removedImage !== petImageRemoved.value) {
+      petImageRemoved.value = removedImage
+      petImage.value = removedImage || originalImage
     }
   }, 1000)
 
@@ -522,13 +545,20 @@ onMounted(() => {
 }
 
 /* ========== 桌宠头像 ========== */
-/* 外层容器：强制1:1正方形，50%圆形圆角，柔和阴影+描边 */
+/* 外层容器：强制1:1正方形，50%圆形圆角，柔和阴影+描边，棋盘格背景支持透明底 */
 .pet-avatar {
   width: 64px;
   height: 64px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--bg-primary);
+  background: 
+    linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+    linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+    linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  background-color: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e4e6eb;
   position: relative;
