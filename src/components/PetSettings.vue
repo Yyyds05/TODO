@@ -80,6 +80,16 @@
         </div>
       </div>
 
+      <!-- 自主游走开关 -->
+      <div class="pose-toggle-section">
+        <label class="pose-toggle">
+          <input type="checkbox" v-model="roamingEnabled" @change="toggleRoaming" />
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">开启自主游走</span>
+        </label>
+        <p class="pose-hint">桌宠会在屏幕内自由移动，碰到边界自动反弹</p>
+      </div>
+
       <!-- 姿态动画开关 -->
       <div class="pose-toggle-section">
         <label class="pose-toggle">
@@ -115,10 +125,16 @@ const isProcessing = ref(false)
 const progressPercent = ref(0)
 const removeBgFailed = ref(false)
 const poseEnabled = ref(true)
+const roamingEnabled = ref(true)
 
 // 姿态开关切换
 function togglePose() {
   safeSet('pet_pose_enabled', poseEnabled.value ? 'true' : 'false')
+}
+
+// 游走开关切换
+function toggleRoaming() {
+  safeSet('pet_roaming_enabled', roamingEnabled.value ? 'true' : 'false')
 }
 
 // 显示的图片（根据切换状态）
@@ -137,6 +153,9 @@ onMounted(() => {
   
   // 读取姿态开关状态（默认开启）
   poseEnabled.value = safeGet('pet_pose_enabled', 'true') === 'true'
+  
+  // 读取游走开关状态（默认开启）
+  roamingEnabled.value = safeGet('pet_roaming_enabled', 'true') === 'true'
   
   // 当前显示的图片
   if (removedBgImage.value) {

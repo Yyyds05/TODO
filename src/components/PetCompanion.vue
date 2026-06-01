@@ -166,6 +166,102 @@ const fullChatRef = ref(null)
 const petImage = ref('')
 const petImageRemoved = ref('')
 
+// ========== 自主游走系统 ==========
+const roamingEnabled = ref(safeGet('pet_roaming_enabled', 'true') === 'true')
+let isRoaming = false
+let roamAnimationId = null
+let roamPosX = 0
+let roamPosY = 0
+let roamVelX = 0
+let roamVelY = 0
+const ROAM_SPEED = 0.5 // 移动速度（像素/帧）
+const ROAM_PADDING = 80 // 边界留白（避免完全贴边）
+
+// 开始自主游走
+function startRoaming() {
+  if (!roamingEnabled.value || isRoaming || isDragging || showQuickChat.value || showFullChat.value) return
+  
+  isRoaming = true
+  
+  // 初始化位置（从当前位置开始）
+  const rect = document.querySelector('.pet-body')?.getBoundingClientRect()
+  if (rect) {
+    roamPosX = window.innerWidth - rect.right
+    roamPosY = window.innerHeight - rect.bottom
+  }
+  
+  // 随机初始方向
+  const angle = Math.random() * Math.PI * 2
+  roamVelX = Math.cos(angle) * ROAM_SPEED
+  roamVelY = Math.sin(angle) * ROAM_SPEED
+  
+  // 切换为走路姿态
+  currentPose.value = 'walk'
+  
+  // 开始动画循环
+  roamLoop()
+}
+
+// 游走动画循环
+function roamLoop() {
+  if (!isRoaming) return
+  
+  // 计算新位置
+  roamPosX += roamVelX
+  roamPosY += roamVelY
+  
+  // 获取窗口尺寸
+  const maxX = window.innerWidth - ROAM_PADDING
+  const maxY = window.innerHeight - ROAM_PADDING
+  const minX = ROAM_PADDING - 64 // 64是桌宠宽度
+  const minY = ROAM_PADDING - 64
+  
+  // 边界检测与反弹
+  if (roamPosX <= minX || roamPosX >= maxX) {
+    roamVelX = -roamVelX
+    roamPosX = Math.max(minX, Math.min(maxX, roamPosX))
+    // 随机微调Y方向
+    roamVelY += (Math.random() - 0.5) * 0.2
+  }
+  
+  if (roamPosY <= minY || roamPosY >= maxY) {
+    roamVelY = -roamVelY
+    roamPosY = Math.max(minY, Math.min(maxY, roamPosY))
+    // 随机微调X方向
+    roamVelX += (Math.random() - 0.5) * 0.2
+  }
+  
+  // 偶尔随机改变方向（增加自然感）
+  if (Math.random() < 0.005) {
+    const angle = Math.random() * Math.PI * 2
+    roamVelX = Math.cos(angle) * ROAM_SPEED
+    roamVelY = Math.sin(angle) * ROAM_SPEED
+  }
+  
+  // 更新位置
+  petPosition.value = {
+    right: roamPosX + 'px',
+    bottom: roamPosY + 'px'
+  }
+  
+  // 继续循环
+  roamAnimationId = requestAnimationFrame(roamLoop)
+}
+
+// 停止自主游走
+function stopRoaming() {
+  isRoaming = false
+  if (roamAnimationId) {
+    cancelAnimationFrame(roamAnimationId)
+    roamAnimationId = null
+  }
+  // 恢复姿态循环
+  if (poseEnabled.value && !showQuickChat.value && !showFullChat.value) {
+    currentPose.value = 'idle'
+    startPoseAnimation()
+  }
+}
+
 // ========== 姿态动画系统 ==========
 // 姿态类型：idle(站立) | walk(走路) | rest(休憩)
 const currentPose = ref('idle')
@@ -270,8 +366,10 @@ onMounted(() => {
   // 初始化
   initPetImage()
   
-  // 启动姿态动画
-  if (poseEnabled.value) {
+  // 启动姿态动画或自主游走（游走优先）
+  if (roamingEnabled.value) {
+    setTimeout(() => startRoaming(), 1000)
+  } else if (poseEnabled.value) {
     startPoseAnimation()
   }
   
@@ -281,11 +379,23 @@ onMounted(() => {
     const newPoseEnabled = safeGet('pet_pose_enabled', 'true') === 'true'
     if (newPoseEnabled !== poseEnabled.value) {
       poseEnabled.value = newPoseEnabled
-      if (poseEnabled.value) {
+      if (poseEnabled.value && !roamingEnabled.value) {
         startPoseAnimation()
       } else {
         stopPoseAnimation()
         currentPose.value = 'idle'
+      }
+    }
+    // 监听游走开关变化
+    const newRoamingEnabled = safeGet('pet_roaming_enabled', 'true') === 'true'
+    if (newRoamingEnabled !== roamingEnabled.value) {
+      roamingEnabled.value = newRoamingEnabled
+      if (roamingEnabled.value) {
+        stopPoseAnimation()
+        startRoaming()
+      } else {
+        stopRoaming()
+        if (poseEnabled.value) startPoseAnimation()
       }
     }
   }
@@ -326,7 +436,8 @@ function startDrag(e) {
   startPosRight = window.innerWidth - rect.right
   startPosBottom = window.innerHeight - rect.bottom
 
-  // 拖拽开始时固定为站立姿态
+  // 拖拽开始时停止游走和姿态动画
+  stopRoaming()
   stopPoseAnimation()
   currentPose.value = 'idle'
 
@@ -356,8 +467,10 @@ function startDrag(e) {
     document.removeEventListener('touchmove', onMove)
     document.removeEventListener('touchend', onEnd)
     
-    // 拖拽结束后恢复自动循环
-    if (poseEnabled.value) {
+    // 拖拽结束后恢复游走和姿态循环
+    if (roamingEnabled.value) {
+      setTimeout(() => startRoaming(), 500)
+    } else if (poseEnabled.value) {
       startPoseAnimation()
     }
   }
@@ -404,12 +517,19 @@ function toggleQuickChat() {
   showQuickChat.value = !showQuickChat.value
   showBubble.value = false
   if (showQuickChat.value) {
+    // 打开对话时停止游走
+    stopRoaming()
     unreadCount.value = 0
     nextTick(() => {
       if (quickChatRef.value) {
         quickChatRef.value.scrollTop = quickChatRef.value.scrollHeight
       }
     })
+  } else {
+    // 关闭对话后恢复游走
+    if (roamingEnabled.value) {
+      setTimeout(() => startRoaming(), 500)
+    }
   }
 }
 
@@ -418,6 +538,8 @@ function openFullChat() {
   showQuickChat.value = false
   showBubble.value = false
   unreadCount.value = 0
+  // 打开对话时停止游走
+  stopRoaming()
   nextTick(() => {
     if (fullChatRef.value) {
       fullChatRef.value.scrollTop = fullChatRef.value.scrollHeight
@@ -427,6 +549,10 @@ function openFullChat() {
 
 function closeFullChat() {
   showFullChat.value = false
+  // 关闭对话后恢复游走
+  if (roamingEnabled.value) {
+    setTimeout(() => startRoaming(), 500)
+  }
 }
 
 // ========== 控制按钮 ==========
