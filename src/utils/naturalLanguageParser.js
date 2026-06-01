@@ -10,6 +10,48 @@ const numberMap = {
   '十一': 11, '十二': 12, '两': 2
 }
 
+/**
+ * 将中文数字转换为阿拉伯数字
+ * @param {string} chineseNum - 中文数字，如"三"、"十二"
+ * @returns {number} - 阿拉伯数字
+ */
+function chineseToNumber(chineseNum) {
+  if (!chineseNum) return NaN
+  
+  // 如果是纯阿拉伯数字，直接返回
+  if (/^\d+$/.test(chineseNum)) {
+    return parseInt(chineseNum)
+  }
+  
+  // 直接匹配
+  if (numberMap[chineseNum] !== undefined) {
+    return numberMap[chineseNum]
+  }
+  
+  // 处理"十"开头的数字，如"十三"
+  if (chineseNum.startsWith('十')) {
+    const remainder = chineseNum.slice(1)
+    if (remainder === '') return 10
+    return 10 + (numberMap[remainder] || 0)
+  }
+  
+  // 处理"十"结尾的数字，如"二十"
+  if (chineseNum.endsWith('十')) {
+    const prefix = chineseNum.slice(0, -1)
+    return (numberMap[prefix] || 0) * 10
+  }
+  
+  // 处理中间的"十"，如"二十三"
+  const parts = chineseNum.split('十')
+  if (parts.length === 2) {
+    const ten = numberMap[parts[0]] || 0
+    const one = numberMap[parts[1]] || 0
+    return ten * 10 + one
+  }
+  
+  return NaN
+}
+
 // 星期映射
 const weekDayMap = {
   '周一': 1, '星期一': 1, '周二': 2, '星期二': 2,
@@ -66,17 +108,33 @@ function parseDateTimePatterns(text, now) {
   let remainingText = text
 
   // 模式1: 明天/今天/后天 + 可选时间
-  const dayPattern = /(明天|今天|后天|大后天)(早上|上午|中午|下午|晚上)?(\d{1,2})?(?::|点)?(\d{1,2})?分?/g
-  const dayMatch = dayPattern.exec(text)
+  // 先尝试匹配带具体时间的：明天下午三点、明天下午3点、明天3点
+  // 支持阿拉伯数字和中文数字
+  const dayTimePattern = /(明天|今天|后天|大后天)(早上|上午|中午|下午|晚上)?([\d一二三四五六七八九十]{1,2})[:点](\d{1,2})?分?/g
+  let dayMatch = dayTimePattern.exec(text)
+  
+  // 如果没有匹配到带时间的，再匹配只有时间段或只有日期的
+  if (!dayMatch) {
+    const dayPeriodPattern = /(明天|今天|后天|大后天)(早上|上午|中午|下午|晚上)/g
+    dayMatch = dayPeriodPattern.exec(text)
+  }
+  
+  // 如果还没有匹配到，只匹配日期
+  if (!dayMatch) {
+    const dayOnlyPattern = /(明天|今天|后天|大后天)/g
+    dayMatch = dayOnlyPattern.exec(text)
+  }
+  
   if (dayMatch) {
     const dayStr = dayMatch[1]
-    const period = dayMatch[2]
-    let hour = parseInt(dayMatch[3])
+    const period = dayMatch[2] || ''
+    // 使用 chineseToNumber 支持中文数字
+    let hour = chineseToNumber(dayMatch[3])
     const minute = parseInt(dayMatch[4]) || 0
 
     // 如果没有指定小时，根据时间段使用默认时间
     if (isNaN(hour)) {
-      hour = getDefaultHour(dayMatch[0])
+      hour = getDefaultHour(period)
     } else {
       // 根据时间段调整小时数
       if (period === '下午' || period === '晚上') {

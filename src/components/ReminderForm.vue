@@ -505,6 +505,7 @@ function handleAIKeydown(e) {
             placeholder="补充说明（可选）"
           />
         </div>
+        </div>
       </Transition>
       
       <!-- 错误提示 -->
