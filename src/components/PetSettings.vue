@@ -92,7 +92,6 @@
 
       <!-- AI姿态生成 -->
       <div class="ai-pose-section">
-        <h4>🎨 AI姿态生成</h4>
         <div class="api-key-input">
           <input
             v-model="stabilityApiKey"
@@ -116,7 +115,7 @@
           {{ isGeneratingPoses ? '生成中...' : '✨ AI生成专属姿态' }}
         </button>
         
-        <!-- 姿态生成器组件 -->
+        <!-- 姿态生成器组件（包含标题和预览） -->
         <PetPoseGenerator ref="poseGeneratorRef" />
       </div>
 

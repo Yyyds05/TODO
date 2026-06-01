@@ -37,6 +37,13 @@ const form = ref({
   description: ''
 })
 
+// 监听标签列表加载，默认选中第一个标签
+watch(() => tags.value, (newTags) => {
+  if (newTags.length > 0 && !form.value.tag) {
+    form.value.tag = newTags[0].name
+  }
+}, { immediate: true })
+
 const isSubmitting = ref(false)
 const errors = ref({})
 
@@ -89,6 +96,8 @@ function validate() {
   
   if (!form.value.title.trim()) {
     errors.value.title = '请输入提醒内容'
+    // 触发输入框抖动动画
+    triggerShake()
   }
   
   if (!form.value.datetime) {
@@ -101,6 +110,15 @@ function validate() {
   }
   
   return Object.keys(errors.value).length === 0
+}
+
+// 输入框抖动动画
+const isShaking = ref(false)
+function triggerShake() {
+  isShaking.value = true
+  setTimeout(() => {
+    isShaking.value = false
+  }, 500)
 }
 
 // 设置快速时间
@@ -302,7 +320,7 @@ function handleAIKeydown(e) {
             type="text"
             class="input title-input"
             placeholder="提醒内容..."
-            :class="{ error: errors.title, 'has-parse': showParsedHighlight }"
+            :class="{ error: errors.title, 'has-parse': showParsedHighlight, shake: isShaking }"
           />
           <button
             type="button"
@@ -377,6 +395,7 @@ function handleAIKeydown(e) {
         <button
           type="button"
           class="advanced-toggle-btn"
+          :class="{ expanded: showAdvancedOptions }"
           @click="toggleAdvancedOptions"
         >
           <span>{{ showAdvancedOptions ? '收起选项 ▲' : '更多选项 ▼' }}</span>
@@ -384,7 +403,8 @@ function handleAIKeydown(e) {
       </div>
       
       <!-- 高级选项区域 -->
-      <div v-show="showAdvancedOptions" class="advanced-options">
+      <Transition name="expand">
+        <div v-show="showAdvancedOptions" class="advanced-options">
         <!-- 优先级选择 -->
         <div class="form-group">
           <label class="form-label">优先级</label>
@@ -462,7 +482,7 @@ function handleAIKeydown(e) {
             placeholder="补充说明（可选）"
           />
         </div>
-      </div>
+      </Transition>
       
       <!-- 错误提示 -->
       <div v-if="errors.submit" class="error-text submit-error">{{ errors.submit }}</div>
@@ -706,18 +726,46 @@ function handleAIKeydown(e) {
 }
 
 .advanced-options {
-  animation: slideDown var(--transition-normal) ease-out;
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-sm);
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* 展开/收起过渡动画 */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease;
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+}
+
+/* 切换按钮展开状态 */
+.advanced-toggle-btn.expanded {
+  background: var(--bg-tertiary);
+  border-style: solid;
+}
+
+/* 输入框抖动动画 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+  border-color: var(--accent-red) !important;
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.15) !important;
 }
 
 /* AI 按钮和输入区域 */

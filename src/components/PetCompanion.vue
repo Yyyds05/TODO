@@ -44,6 +44,15 @@
           </div>
         </div>
 
+        <!-- 新手引导气泡（仅首次展示） -->
+        <Transition name="bubble">
+          <div v-if="showGuide && !petImage" class="pet-bubble guide-bubble" @click.stop="dismissGuide">
+            <div class="bubble-content">🎉 专属桌宠，可拖拽/点击互动</div>
+            <div class="bubble-arrow"></div>
+            <button class="guide-close" @click.stop="dismissGuide">✕</button>
+          </div>
+        </Transition>
+
         <!-- 气泡对话（单击触发） -->
         <Transition name="bubble">
           <div v-if="showBubble && currentBubble" class="pet-bubble" @click.stop>
@@ -162,6 +171,28 @@ const userInput = ref('')
 const fullInput = ref('')
 const quickChatRef = ref(null)
 const fullChatRef = ref(null)
+
+// ========== 新手引导 ==========
+const showGuide = ref(false)
+const GUIDE_KEY = 'pet_guide_shown'
+
+// 显示新手引导
+function showGuideIfNeeded() {
+  const hasShown = safeGet(GUIDE_KEY, 'false')
+  if (hasShown !== 'true') {
+    showGuide.value = true
+    // 5秒后自动隐藏
+    setTimeout(() => {
+      dismissGuide()
+    }, 5000)
+  }
+}
+
+// 关闭新手引导
+function dismissGuide() {
+  showGuide.value = false
+  safeSet(GUIDE_KEY, 'true')
+}
 
 // 桌宠图片（优先使用抠图后的透明底图片）
 const petImage = ref('')
@@ -408,6 +439,9 @@ let storageListener = null
 onMounted(() => {
   // 初始化
   initPetImage()
+  
+  // 显示新手引导（仅首次）
+  setTimeout(() => showGuideIfNeeded(), 1500)
   
   // 启动姿态动画或自主游走（游走优先）
   if (roamingEnabled.value) {
@@ -966,6 +1000,49 @@ onMounted(() => {
   border-right: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   transform: rotate(45deg);
+}
+
+/* 新手引导气泡 */
+.guide-bubble {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  position: relative;
+  cursor: pointer;
+}
+
+.guide-bubble .bubble-arrow {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.guide-bubble .bubble-content {
+  color: white;
+  font-weight: 500;
+  padding-right: 24px;
+}
+
+.guide-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.guide-close:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* ========== 快捷对话面板 ========== */

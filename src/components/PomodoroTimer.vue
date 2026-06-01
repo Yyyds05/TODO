@@ -442,17 +442,21 @@ function handleVisibilityChange() {
 }
 
 .timer-time {
-  font-size: 56px;
-  font-weight: 300;
+  font-size: 64px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
   letter-spacing: -2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .timer-mode {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-secondary);
   font-weight: 500;
+  padding: 4px 12px;
+  background: var(--bg-secondary);
+  border-radius: 20px;
 }
 
 /* 控制按钮 */
