@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
 import Toast from './components/Toast.vue'
 import AIAssistant from './components/AIAssistant.vue'
+import PetCompanion from './components/PetCompanion.vue'
 import { safeGet, safeSet } from './utils/safeStorage.js'
 
 const route = useRoute()
@@ -82,6 +83,9 @@ const closeWelcome = () => {
     
     <!-- AI助手 -->
     <AIAssistant />
+    
+    <!-- 专属桌宠 -->
+    <PetCompanion />
   </div>
 </template>
 

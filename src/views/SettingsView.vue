@@ -10,6 +10,7 @@ import {
 } from '../stores/reminderStore.js'
 import { reminderAlarm } from '../services/reminderAlarm.js'
 import { safeGet, safeSet } from '../utils/safeStorage.js'
+import PetSettings from '../components/PetSettings.vue'
 
 // 导入文件输入
 const fileInput = ref(null)
@@ -312,6 +313,9 @@ async function requestNotificationPermission() {
         </div>
       </section>
       
+      <!-- 我的专属桌宠 -->
+      <PetSettings />
+
       <!-- 关于 -->
       <section class="settings-section card">
         <h3 class="section-title">
