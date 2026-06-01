@@ -87,7 +87,9 @@ const quickTimes = [
   { label: '15分钟后', minutes: 15 },
   { label: '30分钟后', minutes: 30 },
   { label: '1小时后', minutes: 60 },
-  { label: '明天', minutes: 24 * 60 }
+  { label: '明天', minutes: 24 * 60 },
+  { label: '后天', minutes: 2 * 24 * 60 },
+  { label: '下周一', type: 'nextWeekday', weekday: 1 }
 ]
 
 // 验证表单
@@ -122,8 +124,23 @@ function triggerShake() {
 }
 
 // 设置快速时间
-function setQuickTime(minutes) {
-  const date = new Date(Date.now() + minutes * 60 * 1000)
+function setQuickTime(item) {
+  let date
+  if (item.type === 'nextWeekday') {
+    // 下周一：找到下一个指定星期几
+    date = new Date()
+    const currentDay = date.getDay() // 0=周日, 1=周一...
+    const targetDay = item.weekday
+    let daysUntil = targetDay - currentDay
+    if (daysUntil <= 0) {
+      daysUntil += 7
+    }
+    date.setDate(date.getDate() + daysUntil)
+    date.setHours(9, 0, 0, 0) // 默认上午9点
+  } else {
+    // 分钟偏移
+    date = new Date(Date.now() + item.minutes * 60 * 1000)
+  }
   form.value.datetime = formatDateTimeLocal(date)
 }
 
@@ -368,11 +385,11 @@ function handleAIKeydown(e) {
       <!-- 快速时间选择 -->
       <div class="quick-times">
         <button
-          v-for="time in quickTimes"
-          :key="time.minutes"
+          v-for="(time, index) in quickTimes"
+          :key="time.minutes || index"
           type="button"
           class="quick-time-btn"
-          @click="setQuickTime(time.minutes)"
+          @click="setQuickTime(time)"
         >
           {{ time.label }}
         </button>

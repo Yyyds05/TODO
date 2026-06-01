@@ -43,6 +43,7 @@ const isExpiringSoon = computed(() => {
 // 动画状态
 const showRipple = ref(false)
 const showCheckFloat = ref(false)
+const showCompleteToast = ref(false)
 
 // 子任务状态
 const subtasks = ref([])
@@ -57,6 +58,7 @@ async function handleToggleComplete() {
     // 触发完成动画
     showRipple.value = true
     showCheckFloat.value = true
+    showCompleteToast.value = true
     
     // 动画结束后重置状态
     setTimeout(() => {
@@ -66,6 +68,10 @@ async function handleToggleComplete() {
     setTimeout(() => {
       showCheckFloat.value = false
     }, 800)
+    
+    setTimeout(() => {
+      showCompleteToast.value = false
+    }, 1500)
   }
   
   await toggleComplete(props.reminder.id)
@@ -183,6 +189,10 @@ function toggleSubtasksList() {
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </span>
+      <!-- 完成提示 -->
+      <Transition name="fade">
+        <span v-if="showCompleteToast" class="complete-toast">已完成🎉</span>
+      </Transition>
     </div>
     
     <div class="content" @click="handleToggleComplete">
@@ -358,6 +368,34 @@ function toggleSubtasksList() {
     transform: translateY(-40px) scale(0.6);
     opacity: 0;
   }
+}
+
+/* 完成提示 */
+.complete-toast {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #34c759 0%, #30d158 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+}
+
+/* fade 动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-5px);
 }
 
 /* 高优先级左侧竖线 */

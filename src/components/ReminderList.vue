@@ -224,6 +224,7 @@ async function handleSwipeDelete(reminder) {
         class="view-btn"
         :class="{ active: viewMode === 'all' }"
         @click="viewMode = 'all'"
+        title="展示所有提醒任务"
       >
         全部
       </button>
@@ -231,6 +232,7 @@ async function handleSwipeDelete(reminder) {
         class="view-btn"
         :class="{ active: viewMode === 'today' }"
         @click="viewMode = 'today'"
+        title="仅展示今日提醒任务"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
@@ -238,6 +240,12 @@ async function handleSwipeDelete(reminder) {
         </svg>
         我的一天
       </button>
+    </div>
+
+    <!-- 视图说明 -->
+    <div class="view-hint">
+      <span v-if="viewMode === 'today'" class="hint-text">📅 仅展示今天到期的提醒任务</span>
+      <span v-else class="hint-text">📋 展示所有待办和已完成的提醒任务</span>
     </div>
 
     <!-- 搜索框 -->
@@ -585,6 +593,19 @@ async function handleSwipeDelete(reminder) {
   background: var(--accent-blue);
   border-color: var(--accent-blue);
   color: white;
+}
+
+/* 视图说明 */
+.view-hint {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+}
+
+.hint-text {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .view-btn svg {

@@ -623,6 +623,18 @@ function toggleQuickChat() {
 }
 
 function openFullChat() {
+  // 前置校验API密钥
+  const apiKey = safeGet('deepseek_api_key')
+  if (!apiKey) {
+    // 显示密钥缺失提示
+    currentBubble.value = '🔑 请先前往设置页配置 DeepSeek API 密钥'
+    showBubble.value = true
+    setTimeout(() => {
+      showBubble.value = false
+    }, 3000)
+    return
+  }
+  
   showFullChat.value = true
   showQuickChat.value = false
   showBubble.value = false
