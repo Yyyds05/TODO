@@ -460,7 +460,8 @@ onMounted(() => {
   height: 48px;
   border-radius: 50%;
   background: var(--bg-primary);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e4e6eb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -471,14 +472,17 @@ onMounted(() => {
 
 .pet-mini:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* 图片容器：强制1:1正方形，object-fit:cover居中裁切 */
 .pet-mini-img {
-  width: 100%;
-  height: 100%;
+  width: 48px;
+  height: 48px;
   object-fit: cover;
+  object-position: center;
   border-radius: 50%;
+  display: block;
 }
 
 .pet-mini-placeholder {
@@ -518,13 +522,15 @@ onMounted(() => {
 }
 
 /* ========== 桌宠头像 ========== */
+/* 外层容器：强制1:1正方形，50%圆形圆角，柔和阴影+描边 */
 .pet-avatar {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   overflow: hidden;
   background: var(--bg-primary);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e4e6eb;
   position: relative;
   transition: transform 0.2s;
   flex-shrink: 0;
@@ -534,11 +540,14 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
+/* 图片：强制填满容器，object-fit:cover居中裁切，禁止拉伸 */
 .pet-img {
-  width: 100%;
-  height: 100%;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
+  object-position: center;
   border-radius: 50%;
+  display: block;
 }
 
 .pet-placeholder {
@@ -944,9 +953,15 @@ onMounted(() => {
 
 /* ========== 响应式 ========== */
 @media (max-width: 640px) {
+  /* 移动端：48px×48px 正方形 */
   .pet-avatar {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .pet-img {
+    width: 48px;
+    height: 48px;
   }
 
   .pet-placeholder span {
@@ -967,11 +982,17 @@ onMounted(() => {
     border-radius: 16px;
   }
 
+  /* 移动端最小化图标：48px×48px */
   .pet-mini {
     right: 16px;
     bottom: 120px;
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .pet-mini-img {
+    width: 48px;
+    height: 48px;
   }
 
   .pet-controls {

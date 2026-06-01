@@ -102,18 +102,60 @@ function handleFileUpload(event) {
     return
   }
 
-  // 读取文件
+  // 读取文件并压缩
   const reader = new FileReader()
   reader.onload = (e) => {
     const dataUrl = e.target.result
-    savePetImage(dataUrl)
-    event.target.value = ''
+    // 压缩图片：最大400px，质量0.8
+    compressImage(dataUrl, 400, 0.8)
+      .then(compressed => {
+        savePetImage(compressed)
+        event.target.value = ''
+      })
+      .catch(() => {
+        uploadError.value = '图片处理失败，请重试'
+        event.target.value = ''
+      })
   }
   reader.onerror = () => {
     uploadError.value = '读取文件失败，请重试'
     event.target.value = ''
   }
   reader.readAsDataURL(file)
+}
+
+// 图片压缩函数
+function compressImage(dataUrl, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let w = img.width
+      let h = img.height
+
+      // 等比例缩放，最大边不超过maxSize
+      if (w > maxSize || h > maxSize) {
+        if (w > h) {
+          h = Math.round(h * maxSize / w)
+          w = maxSize
+        } else {
+          w = Math.round(w * maxSize / h)
+          h = maxSize
+        }
+      }
+
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, w, h)
+
+      // 输出压缩后的图片
+      const compressed = canvas.toDataURL('image/jpeg', quality)
+      resolve(compressed)
+    }
+    img.onerror = reject
+    img.src = dataUrl
+  })
 }
 
 // 处理URL上传
@@ -224,19 +266,25 @@ function resetPet() {
   margin-bottom: 24px;
 }
 
+/* 预览容器：强制1:1正方形，50%圆形圆角，柔和阴影+描边 */
 .preview-circle {
   width: 100px;
   height: 100px;
   border-radius: 50%;
   overflow: hidden;
   background: linear-gradient(135deg, #e8f4fd, #f0e6ff);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e4e6eb;
 }
 
+/* 预览图片：强制填满容器，object-fit:cover居中裁切，禁止拉伸 */
 .preview-img {
-  width: 100%;
-  height: 100%;
+  width: 100px;
+  height: 100px;
   object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  display: block;
 }
 
 .preview-placeholder {
