@@ -100,7 +100,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { safeGet, safeSet, safeRemove } from '../utils/safeStorage.js'
-import removeBackground from '@imgly/background-removal'
+import removeBackgroundLib from '@imgly/background-removal'
 
 // 状态
 const currentImage = ref('')
@@ -218,7 +218,7 @@ async function removeBackground() {
     const file = new File([blob], 'pet.png', { type: 'image/png' })
 
     // 调用 AI 抠图
-    const blobResult = await removeBackground(file, {
+    const blobResult = await removeBackgroundLib(file, {
       progress: (p) => {
         progressPercent.value = Math.round(p * 100)
       },
