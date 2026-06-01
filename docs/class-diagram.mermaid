@@ -1,0 +1,229 @@
+classDiagram
+    direction TB
+
+    class SkyDeskDB {
+        +events: Table
+        +tags: Table
+        +habits: Table
+        +settings: Table
+        +version(2)
+    }
+
+    class Event {
+        +id: number
+        +title: string
+        +description: string
+        +start: Date
+        +end: Date
+        +allDay: boolean
+        +color: string
+        +priority: string
+        +completed: boolean
+        +completedAt: Date|null
+        +tagIds: number[]
+        +remindAt: Date|null
+        +reminderMinutesBefore: number|null
+        +rrule: string|null
+        +rruleEndCondition: object|null
+        +parentId: number|null
+        +location: string
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class Tag {
+        +id: number
+        +name: string
+        +color: string
+        +createdAt: Date
+    }
+
+    class Habit {
+        +id: number
+        +name: string
+        +streak: number
+        +bestStreak: number
+        +records: Array
+    }
+
+    class Setting {
+        +id: number
+        +key: string
+        +value: any
+    }
+
+    SkyDeskDB --> Event : events
+    SkyDeskDB --> Tag : tags
+    SkyDeskDB --> Habit : habits
+    SkyDeskDB --> Setting : settings
+
+    class SkyRenderer {
+        +canvas: HTMLCanvasElement
+        +ctx: CanvasRenderingContext2D
+        +weatherState: string
+        +weatherData: object
+        +clouds: Cloud[]
+        +stars: Star[]
+        +rainDrops: RainDrop[]
+        +snowFlakes: SnowFlake[]
+        +sunMoon: SunMoon
+        +perlinNoise: PerlinNoise
+        +visualParams: VisualParams
+        +onCloudClick: Function
+        +onCloudHover: Function
+        +init()
+        +start()
+        +stop()
+        +setWeather(state, data)
+        +applyVisualParams(params)
+        +updateCloudsFromTodos(todos)
+        +updateStarsFromCompleted(completed)
+        +destroy()
+    }
+
+    class PerlinNoise {
+        +noise2D(x, y): number
+        +noise3D(x, y, z): number
+    }
+
+    class VisualParams {
+        +colorTempShift: number
+        +fogDensity: number
+        +cloudSpeedMultiplier: number
+        +rainAngle: number
+        +starBrightnessMultiplier: number
+        +lightningChance: number
+    }
+
+    SkyRenderer --> PerlinNoise : uses
+    SkyRenderer --> VisualParams : consumes
+
+    class AmbientSoundService {
+        -audioContext: AudioContext
+        -activeSynth: WeatherSynth|null
+        -masterGain: GainNode
+        -isPlaying: boolean
+        -volume: number
+        -currentWeather: string
+        +init()
+        +playWeather(weather: string)
+        +crossfade(weather: string, duration: number)
+        +stop()
+        +toggle()
+        +setVolume(v: number)
+        +ensureContext()
+        +getAudioContext(): AudioContext
+        +destroy()
+    }
+
+    class WeatherSynth {
+        +type: string
+        +nodes: AudioNode[]
+        +gainNode: GainNode
+        +start()
+        +stop()
+    }
+
+    AmbientSoundService --> WeatherSynth : creates
+
+    class NotificationService {
+        -permission: string
+        -scheduledTimers: Map
+        +requestPermission(): string
+        +scheduleReminder(event: Event)
+        +cancelReminder(eventId: number)
+        +cancelAll()
+        +fireNotification(event: Event)
+        +checkUpcoming()
+    }
+
+    class RecurrenceService {
+        +expandRule(rrule: string, start: Date, rangeStart: Date, rangeEnd: Date): Date[]
+        +generateRRule(config: RecurrenceConfig): string
+        +editSingleOccurrence(event: Event, changes: object): Event
+        +editAllOccurrences(event: Event, changes: object): Event
+    }
+
+    class RecurrenceConfig {
+        +freq: string
+        +interval: number
+        +until: Date|null
+        +count: number|null
+        +byday: string[]
+    }
+
+    RecurrenceService --> RecurrenceConfig : uses
+
+    class SearchService {
+        +search(query: string, events: Event[], filters: SearchFilters): Event[]
+        -fuzzyMatch(text: string, query: string): boolean
+        -matchTag(event: Event, tagIds: number[]): boolean
+        -matchDateRange(event: Event, start: Date, end: Date): boolean
+        -matchStatus(event: Event, status: string): boolean
+    }
+
+    class SearchFilters {
+        +tagIds: number[]
+        +dateStart: Date|null
+        +dateEnd: Date|null
+        +status: string
+        +priority: string
+    }
+
+    SearchService --> SearchFilters : uses
+
+    class WeatherService {
+        +current: WeatherData
+        +location: object
+        +listeners: Function[]
+        +fetchWeather(forceRefresh: boolean)
+        +onChange(fn: Function)
+        +getVisualParams(): VisualParams
+        +getMusicMood(): string
+        +getWeatherTip(): string
+    }
+
+    class WeatherData {
+        +state: string
+        +label: string
+        +icon: string
+        +temp: number
+        +humidity: number
+        +windspeed: number
+        +isDay: boolean
+    }
+
+    WeatherService --> WeatherData : current
+    WeatherService --> VisualParams : computes
+
+    class SkyBackground {
+        +props: SkyBackgroundProps
+        +emits: cloud-click, cloud-hover
+        +skyRenderer: SkyRenderer
+    }
+
+    class SkyBackgroundProps {
+        +theme: string
+        +intensity: number
+        +weatherOverride: string
+        +interactive: boolean
+    }
+
+    SkyBackground --> SkyRenderer : manages
+    SkyBackground --> SkyBackgroundProps : receives
+
+    class EventBus {
+        +on(event: string, handler: Function)
+        +off(event: string, handler: Function)
+        +emit(event: string, data: any)
+    }
+
+    class AudioManager {
+        +audioContext: AudioContext
+        +isInitialized: boolean
+        +ensureContext()
+        +playNotification(type: string)
+        +destroy()
+    }
+
+    AudioManager --> AmbientSoundService : shares AudioContext

@@ -1,0 +1,84 @@
+sequenceDiagram
+    participant User
+    participant MusicPlayer as MusicPlayer.vue
+    participant Ambient as AmbientSoundService
+    participant AudioCtx as AudioContext
+    participant Weather as WeatherService
+    participant EventBus
+
+    User->>MusicPlayer: 点击播放/切换天气音效
+    MusicPlayer->>Ambient: ensureContext()
+    Ambient->>AudioCtx: resume() (如果 suspended)
+    AudioCtx-->>Ambient: 已恢复
+
+    alt 首次激活
+        Ambient->>AudioCtx: 创建 masterGain
+        Ambient->>AudioCtx: 连接 destination
+    end
+
+    MusicPlayer->>Ambient: playWeather('rainy')
+    
+    alt 已有其他天气在播放
+        Ambient->>Ambient: crossfade('rainy', 2000)
+        Ambient->>AudioCtx: 创建 RainySynth
+        Ambient->>AudioCtx: 新 synth.gain 线性上升 0→1 (2s)
+        Ambient->>AudioCtx: 旧 synth.gain 线性下降 1→0 (2s)
+        Ambient->>AudioCtx: 2s后 stop 旧 synth
+    else 无播放
+        Ambient->>AudioCtx: 创建 RainySynth
+        Note right of AudioCtx: 滤波白噪声 + 低频脉冲(远雷) + 雨滴节奏
+        Ambient->>AudioCtx: synth.gain = 1 (淡入)
+        Ambient->>AudioCtx: synth → masterGain → destination
+    end
+
+    Ambient-->>MusicPlayer: 状态更新 {isPlaying, weather:'rainy'}
+    MusicPlayer->>EventBus: emit('audio:weather-changed', 'rainy')
+    EventBus-->>SkyRenderer: 应用天气联动参数
+
+    Note over User,SkyRenderer: === 通知提醒触发流程 ===
+
+    participant EventModal as EventModal.vue
+    participant Store as eventStore
+    participant NotifSvc as NotificationService
+    participant Browser as Browser Notification API
+    participant DB as Dexie DB
+
+    User->>EventModal: 设置提醒时间 (5min/15min/自定义)
+    EventModal->>Store: createEvent({remindAt, reminderMinutesBefore})
+    Store->>DB: events.add(event)
+    Store->>NotifSvc: scheduleReminder(event)
+
+    alt 首次设置提醒
+        NotifSvc->>Browser: requestPermission()
+        Browser-->>NotifSvc: 'granted' | 'denied'
+    end
+
+    NotifSvc->>NotifSvc: 计算 triggerTime = event.start - reminderMinutesBefore
+    NotifSvc->>NotifSvc: setTimeout(callback, delay) → scheduledTimers.set(eventId, timerId)
+
+    Note over NotifSvc: ...时间到达...
+
+    NotifSvc->>Browser: new Notification('SkyDesk 提醒', {body: event.title, icon})
+    Browser-->>User: 显示桌面通知
+    NotifSvc->>EventBus: emit('notification:fired', event)
+    EventBus-->>SkyView: 显示应用内提示
+
+    Note over User,SkyView: === 天气→视觉→音频联动流程 ===
+
+    Weather->>Weather: fetchWeather() 完成
+    Weather->>Weather: 计算 visualParams
+    Note right of Weather: colorTempShift = temp→色温<br/>fogDensity = humidity/100<br/>cloudSpeed = 1 + windspeed/20<br/>rainAngle = min(30, windspeed)
+
+    Weather->>EventBus: emit('weather:changed', {state, visualParams})
+
+    EventBus-->>SkyRenderer: onWeatherChanged(data)
+    SkyRenderer->>SkyRenderer: setWeather(data.state, data)
+    SkyRenderer->>SkyRenderer: applyVisualParams(data.visualParams)
+    Note right of SkyRenderer: 天空渐变色温偏移<br/>云朵移速 × cloudSpeed<br/>雨丝角度 = rainAngle<br/>雾气浓度 = fogDensity
+
+    EventBus-->>Ambient: onWeatherChanged(data)
+    Ambient->>Ambient: crossfade(data.state, 2000)
+
+    EventBus-->>Store: onWeatherChanged(data)
+    Store->>Store: 更新 weather 状态
+    Note right of Store: 待办密度→云量<br/>完成率→星星<br/>紧急事件→闪电概率
