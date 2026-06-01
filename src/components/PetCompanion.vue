@@ -25,7 +25,11 @@
         @touchstart="startDrag"
       >
         <!-- 桌宠图片 -->
-        <div class="pet-avatar" @dblclick="openFullChat">
+        <div 
+          class="pet-avatar" 
+          :class="['pose-' + currentPose, { 'pose-enabled': poseEnabled }]"
+          @dblclick="openFullChat"
+        >
           <img v-if="petImage" :src="petImage" class="pet-img" draggable="false" />
           <div v-else class="pet-placeholder">
             <span>🐾</span>
@@ -162,6 +166,63 @@ const fullChatRef = ref(null)
 const petImage = ref('')
 const petImageRemoved = ref('')
 
+// ========== 姿态动画系统 ==========
+// 姿态类型：idle(站立) | walk(走路) | rest(休憩)
+const currentPose = ref('idle')
+const poseEnabled = ref(safeGet('pet_pose_enabled', 'true') === 'true')
+let poseTimer = null
+let walkFrame = 0
+
+// 姿态配置
+const POSE_CONFIG = {
+  idle: { name: '站立', duration: 3000, next: 'walk' },
+  walk: { name: '走路', duration: 180, next: 'rest', frames: 2 },
+  rest: { name: '休憩', duration: 4000, next: 'idle' }
+}
+
+// 开始姿态动画循环
+function startPoseAnimation() {
+  if (!poseEnabled.value) return
+  
+  const config = POSE_CONFIG[currentPose.value]
+  
+  poseTimer = setTimeout(() => {
+    // 走路姿态需要切换帧
+    if (currentPose.value === 'walk') {
+      walkFrame = (walkFrame + 1) % 2
+    }
+    
+    // 切换到下一个姿态
+    currentPose.value = config.next
+    
+    // 继续循环
+    startPoseAnimation()
+  }, config.duration)
+}
+
+// 停止姿态动画
+function stopPoseAnimation() {
+  if (poseTimer) {
+    clearTimeout(poseTimer)
+    poseTimer = null
+  }
+}
+
+// 设置特定姿态（用于交互时）
+function setPose(pose) {
+  stopPoseAnimation()
+  currentPose.value = pose
+  walkFrame = 0
+  
+  // 交互结束后恢复自动循环
+  if (poseEnabled.value && pose !== 'idle') {
+    setTimeout(() => {
+      currentPose.value = 'idle'
+      startPoseAnimation()
+    }, 2000)
+  }
+}
+
 // 初始化桌宠图片
 function initPetImage() {
   // 优先读取抠图后的透明底图片
@@ -209,8 +270,24 @@ onMounted(() => {
   // 初始化
   initPetImage()
   
+  // 启动姿态动画
+  if (poseEnabled.value) {
+    startPoseAnimation()
+  }
+  
   storageListener = () => {
     initPetImage()
+    // 监听姿态开关变化
+    const newPoseEnabled = safeGet('pet_pose_enabled', 'true') === 'true'
+    if (newPoseEnabled !== poseEnabled.value) {
+      poseEnabled.value = newPoseEnabled
+      if (poseEnabled.value) {
+        startPoseAnimation()
+      } else {
+        stopPoseAnimation()
+        currentPose.value = 'idle'
+      }
+    }
   }
   window.addEventListener('storage', storageListener)
 
@@ -229,6 +306,7 @@ onMounted(() => {
   onUnmounted(() => {
     window.removeEventListener('storage', storageListener)
     clearInterval(timer)
+    stopPoseAnimation()
   })
 })
 
@@ -247,6 +325,10 @@ function startDrag(e) {
   const rect = e.currentTarget.getBoundingClientRect()
   startPosRight = window.innerWidth - rect.right
   startPosBottom = window.innerHeight - rect.bottom
+
+  // 拖拽开始时固定为站立姿态
+  stopPoseAnimation()
+  currentPose.value = 'idle'
 
   const onMove = (ev) => {
     const cx = ev.touches ? ev.touches[0].clientX : ev.clientX
@@ -273,6 +355,11 @@ function startDrag(e) {
     document.removeEventListener('mouseup', onEnd)
     document.removeEventListener('touchmove', onMove)
     document.removeEventListener('touchend', onEnd)
+    
+    // 拖拽结束后恢复自动循环
+    if (poseEnabled.value) {
+      startPoseAnimation()
+    }
   }
 
   document.addEventListener('mousemove', onMove)
@@ -290,12 +377,14 @@ function handlePetClick() {
   if (clickTimer) {
     clearTimeout(clickTimer)
     clickTimer = null
-    // 双击
+    // 双击 - 切换为歪头互动姿态
+    setPose('rest')
     openFullChat()
   } else {
     clickTimer = setTimeout(() => {
       clickTimer = null
-      // 单击
+      // 单击 - 切换为歪头互动姿态
+      setPose('rest')
       toggleQuickChat()
     }, 250)
   }
@@ -578,6 +667,38 @@ onMounted(() => {
   object-position: center;
   border-radius: 50%;
   display: block;
+}
+
+/* ========== 姿态动画系统 ========== */
+/* 站立姿态（默认） */
+.pet-avatar.pose-enabled.pose-idle .pet-img {
+  animation: poseIdle 3s ease-in-out infinite;
+}
+
+@keyframes poseIdle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* 走路姿态（2帧循环） */
+.pet-avatar.pose-enabled.pose-walk .pet-img {
+  animation: poseWalk 0.36s ease-in-out infinite;
+}
+
+@keyframes poseWalk {
+  0%, 100% { transform: translateX(-3px) rotate(-3deg); }
+  50% { transform: translateX(3px) rotate(3deg); }
+}
+
+/* 休憩/歪头姿态 */
+.pet-avatar.pose-enabled.pose-rest .pet-img {
+  animation: poseRest 4s ease-in-out infinite;
+}
+
+@keyframes poseRest {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.02); }
+  75% { transform: rotate(5deg) scale(0.98); }
 }
 
 .pet-placeholder {

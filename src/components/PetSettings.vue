@@ -80,6 +80,16 @@
         </div>
       </div>
 
+      <!-- 姿态动画开关 -->
+      <div class="pose-toggle-section">
+        <label class="pose-toggle">
+          <input type="checkbox" v-model="poseEnabled" @change="togglePose" />
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">开启宠物姿态动画</span>
+        </label>
+        <p class="pose-hint">桌宠会自动切换站立、走路、休憩姿态</p>
+      </div>
+
       <!-- 错误提示 -->
       <p v-if="uploadError" class="error-text">{{ uploadError }}</p>
       <p v-if="uploadSuccess" class="success-text">{{ uploadSuccess }}</p>
@@ -104,6 +114,12 @@ const fileInput = ref(null)
 const isProcessing = ref(false)
 const progressPercent = ref(0)
 const removeBgFailed = ref(false)
+const poseEnabled = ref(true)
+
+// 姿态开关切换
+function togglePose() {
+  safeSet('pet_pose_enabled', poseEnabled.value ? 'true' : 'false')
+}
 
 // 显示的图片（根据切换状态）
 const displayImage = computed(() => {
@@ -118,6 +134,9 @@ onMounted(() => {
   // 优先读取抠图后的图片
   removedBgImage.value = safeGet('pet_companion_image_removed', '')
   originalImage.value = safeGet('pet_companion_image_original', '')
+  
+  // 读取姿态开关状态（默认开启）
+  poseEnabled.value = safeGet('pet_pose_enabled', 'true') === 'true'
   
   // 当前显示的图片
   if (removedBgImage.value) {
@@ -566,5 +585,65 @@ function resetPet() {
 .btn-sm {
   padding: 6px 14px;
   font-size: 13px;
+}
+
+/* 姿态动画开关 */
+.pose-toggle-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.pose-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.pose-toggle input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 44px;
+  height: 24px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pose-toggle input:checked + .toggle-slider {
+  background: var(--accent-blue);
+}
+
+.pose-toggle input:checked + .toggle-slider::after {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.pose-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 6px 0 0 56px;
 }
 </style>
