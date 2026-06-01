@@ -306,32 +306,25 @@ const poseEnabled = ref(safeGet('pet_pose_enabled', 'true') === 'true')
 let poseTimer = null
 let walkFrame = 0
 
-// 姿态配置（4套姿态循环）
-const POSE_CONFIG = {
-  idle: { name: '站立', duration: 3000, next: 'walk' },
-  walk: { name: '走路', duration: 2000, next: 'rest' },
-  rest: { name: '跳跃', duration: 2000, next: 'sleep' },
-  sleep: { name: '趴卧', duration: 4000, next: 'idle' }
-}
+// 空闲姿态循环配置（站立↔趴卧，5分钟切换）
+const IDLE_POSE_CYCLE = ['idle', 'sleep']
+let idlePoseIndex = 0
 
-// 开始姿态动画循环
-function startPoseAnimation() {
+// 开始空闲姿态循环（站立/趴卧交替，5分钟一次）
+function startIdlePoseCycle() {
   if (!poseEnabled.value) return
   
-  const config = POSE_CONFIG[currentPose.value]
-  
   poseTimer = setTimeout(() => {
-    // 走路姿态需要切换帧
-    if (currentPose.value === 'walk') {
-      walkFrame = (walkFrame + 1) % 2
-    }
-    
-    // 切换到下一个姿态
-    currentPose.value = config.next
-    
-    // 继续循环
-    startPoseAnimation()
-  }, config.duration)
+    idlePoseIndex = (idlePoseIndex + 1) % IDLE_POSE_CYCLE.length
+    currentPose.value = IDLE_POSE_CYCLE[idlePoseIndex]
+    startIdlePoseCycle()
+  }, 5 * 60 * 1000) // 5分钟
+}
+
+// 开始姿态动画循环（非空闲时的快速切换）
+function startPoseAnimation() {
+  if (!poseEnabled.value) return
+  startIdlePoseCycle()
 }
 
 // 停止姿态动画
@@ -348,7 +341,16 @@ function setPose(pose) {
   currentPose.value = pose
   walkFrame = 0
   
-  // 交互结束后恢复自动循环
+  // 跳跃姿态是单次触发，0.3秒后恢复站立
+  if (pose === 'rest') {
+    setTimeout(() => {
+      currentPose.value = 'idle'
+      if (poseEnabled.value) startPoseAnimation()
+    }, 400)
+    return
+  }
+  
+  // 其他交互结束后恢复空闲循环
   if (poseEnabled.value && pose !== 'idle') {
     setTimeout(() => {
       currentPose.value = 'idle'
@@ -766,13 +768,13 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 图片容器：强制1:1正方形，object-fit:cover居中裁切 */
+/* 图片容器：object-fit:contain完整展示 */
 .pet-mini-img {
   width: 48px;
   height: 48px;
-  object-fit: cover;
-  object-position: center;
-  border-radius: 50%;
+  object-fit: contain;
+  object-position: center bottom;
+  border-radius: 0;
   display: block;
 }
 
@@ -813,22 +815,15 @@ onMounted(() => {
 }
 
 /* ========== 桌宠头像 ========== */
-/* 外层容器：强制1:1正方形，50%圆形圆角，柔和阴影+描边，棋盘格背景支持透明底 */
+/* 透明容器：无圆角裁切，保留柔和阴影，透明底宠物自然融合 */
 .pet-avatar {
   width: 64px;
   height: 64px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: 
-    linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
-    linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-    linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
-  background-size: 8px 8px;
-  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
-  background-color: #fff;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e4e6eb;
+  border: none;
   position: relative;
   transition: transform 0.2s;
   flex-shrink: 0;
@@ -838,56 +833,58 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-/* 图片：强制填满容器，object-fit:cover居中裁切，禁止拉伸 */
+/* 图片：object-fit:contain完整展示宠物主体，不裁切不变形 */
 .pet-img {
   width: 64px;
   height: 64px;
-  object-fit: cover;
-  object-position: center;
-  border-radius: 50%;
+  object-fit: contain;
+  object-position: center bottom;
+  border-radius: 0;
   display: block;
 }
 
 /* ========== 姿态动画系统 ========== */
-/* 站立姿态（默认） */
+/* 姿态1：站立 — 轻微呼吸效果，scale微动，2秒循环 */
 .pet-avatar.pose-enabled.pose-idle .pet-img {
-  animation: poseIdle 3s ease-in-out infinite;
+  animation: poseIdle 2s ease-in-out infinite;
 }
 
 @keyframes poseIdle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
 }
 
-/* 走路姿态（2帧循环） */
+/* 姿态2：行走 — 左右偏移+脚步微动，180ms切换，模拟走路 */
 .pet-avatar.pose-enabled.pose-walk .pet-img {
-  animation: poseWalk 0.36s ease-in-out infinite;
+  animation: poseWalk 0.18s steps(1) infinite;
 }
 
 @keyframes poseWalk {
-  0%, 100% { transform: translateX(-3px) rotate(-3deg); }
-  50% { transform: translateX(3px) rotate(3deg); }
+  0% { transform: translateX(-1px) translateY(0); }
+  50% { transform: translateX(1px) translateY(-1px); }
 }
 
-/* 休憩/歪头姿态 */
+/* 姿态3：跳跃 — 向上弹跳+回弹，单次触发 */
 .pet-avatar.pose-enabled.pose-rest .pet-img {
-  animation: poseRest 4s ease-in-out infinite;
+  animation: poseJump 0.3s ease-out forwards;
 }
 
-@keyframes poseRest {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(-8deg) scale(1.02); }
-  75% { transform: rotate(5deg) scale(0.98); }
+@keyframes poseJump {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+  70% { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
 }
 
-/* 趴卧姿态 */
+/* 姿态4：趴卧/休憩 — 缓慢歪头微动，3秒循环，慵懒感 */
 .pet-avatar.pose-enabled.pose-sleep .pet-img {
-  animation: poseSleep 4s ease-in-out infinite;
+  animation: poseSleep 3s ease-in-out infinite;
 }
 
 @keyframes poseSleep {
-  0%, 100% { transform: scale(1) translateY(0); }
-  50% { transform: scale(0.95) translateY(2px); }
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(3deg); }
+  60% { transform: rotate(-2deg); }
 }
 
 .pet-placeholder {
@@ -1293,7 +1290,7 @@ onMounted(() => {
 
 /* ========== 响应式 ========== */
 @media (max-width: 640px) {
-  /* 移动端：48px×48px 正方形 */
+  /* 移动端：48px×48px */
   .pet-avatar {
     width: 48px;
     height: 48px;
