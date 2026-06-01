@@ -33,8 +33,7 @@
           <img v-if="displayPoseImage" :src="displayPoseImage" class="pet-img" draggable="false" />
           <img v-else-if="petImage" :src="petImage" class="pet-img" draggable="false" />
           <div v-else class="pet-placeholder">
-            <span>🐾</span>
-            <p>设置你的桌宠</p>
+            <span class="placeholder-icon">🐾</span>
           </div>
           <!-- 加载动画 -->
           <div v-if="isAiThinking" class="pet-thinking">
@@ -850,10 +849,16 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.pet-body:hover {
+  opacity: 1;
 }
 
 .pet-body:active {
@@ -937,23 +942,15 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e8f4fd, #f0e6ff);
-  gap: 2px;
+  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
 }
 
-.pet-placeholder span {
-  font-size: 28px;
-}
-
-.pet-placeholder p {
-  font-size: 9px;
-  color: var(--text-secondary);
-  margin: 0;
-  text-align: center;
-  line-height: 1.2;
+.placeholder-icon {
+  font-size: 24px;
+  opacity: 0.5;
+  filter: grayscale(0.3);
 }
 
 /* AI 思考动画 */

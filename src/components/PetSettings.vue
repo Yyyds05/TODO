@@ -90,33 +90,46 @@
         <p class="pose-hint">桌宠会在屏幕内自由移动，碰到边界自动反弹</p>
       </div>
 
-      <!-- AI姿态生成 -->
-      <div class="ai-pose-section">
-        <div class="api-key-input">
-          <input
-            v-model="stabilityApiKey"
-            type="password"
-            placeholder="输入 Stability AI API 密钥..."
-            class="input"
-          />
-          <button class="btn btn-primary btn-sm" @click="saveStabilityKey">
-            保存
-          </button>
-        </div>
-        <p class="api-hint">用于生成宠物专属动作姿态（站立/行走/跳跃/趴卧）</p>
-        
-        <!-- 生成姿态按钮 -->
+      <!-- 进阶功能：AI姿态生成（默认折叠） -->
+      <div class="advanced-section">
         <button 
-          v-if="removedBgImage" 
-          class="btn btn-primary btn-full generate-btn"
-          @click="generateAiPoses"
-          :disabled="isGeneratingPoses"
+          class="advanced-toggle" 
+          @click="showAdvanced = !showAdvanced"
+          :class="{ expanded: showAdvanced }"
         >
-          {{ isGeneratingPoses ? '生成中...' : '✨ AI生成专属姿态' }}
+          <span>🔧 进阶功能（专业用户使用）</span>
+          <span class="toggle-icon">{{ showAdvanced ? '▲' : '▼' }}</span>
         </button>
         
-        <!-- 姿态生成器组件（包含标题和预览） -->
-        <PetPoseGenerator ref="poseGeneratorRef" />
+        <Transition name="expand">
+          <div v-show="showAdvanced" class="advanced-content">
+            <div class="api-key-input">
+              <input
+                v-model="stabilityApiKey"
+                type="password"
+                placeholder="输入 Stability AI API 密钥..."
+                class="input"
+              />
+              <button class="btn btn-primary btn-sm" @click="saveStabilityKey">
+                保存
+              </button>
+            </div>
+            <p class="api-hint">用于生成宠物专属动作姿态（站立/行走/跳跃/趴卧）</p>
+            
+            <!-- 生成姿态按钮 -->
+            <button 
+              v-if="removedBgImage" 
+              class="btn btn-primary btn-full generate-btn"
+              @click="generateAiPoses"
+              :disabled="isGeneratingPoses"
+            >
+              {{ isGeneratingPoses ? '生成中...' : '✨ AI生成专属姿态' }}
+            </button>
+            
+            <!-- 姿态生成器组件（包含标题和预览） -->
+            <PetPoseGenerator ref="poseGeneratorRef" />
+          </div>
+        </Transition>
       </div>
 
       <!-- 姿态动画开关 -->
@@ -158,6 +171,9 @@ const roamingEnabled = ref(true)
 
 // Stability API 密钥
 const stabilityApiKey = ref('')
+
+// 进阶功能展开状态（默认折叠）
+const showAdvanced = ref(false)
 
 // 姿态生成器引用
 const poseGeneratorRef = ref(null)
@@ -778,5 +794,67 @@ function resetPet() {
   width: 100%;
   padding: 10px;
   font-size: 14px;
+}
+
+/* 进阶功能区域 */
+.advanced-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.advanced-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.advanced-toggle:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-blue);
+}
+
+.advanced-toggle.expanded {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.toggle-icon {
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+
+.advanced-content {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+/* 展开/收起动画 */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.2s ease;
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
 }
 </style>
