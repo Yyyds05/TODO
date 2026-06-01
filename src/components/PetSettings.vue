@@ -140,7 +140,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { safeGet, safeSet, safeRemove } from '../utils/safeStorage.js'
-import * as backgroundRemoval from '@imgly/background-removal'
 import PetPoseGenerator from './PetPoseGenerator.vue'
 
 // 状态
@@ -164,6 +163,9 @@ const stabilityApiKey = ref('')
 // 姿态生成器引用
 const poseGeneratorRef = ref(null)
 const isGeneratingPoses = ref(false)
+
+// 动态加载的抠图库（按需加载，不在首页预加载）
+let backgroundRemoval = null
 
 // 姿态开关切换
 function togglePose() {
@@ -289,7 +291,7 @@ async function handleFileUpload(event) {
   reader.readAsDataURL(file)
 }
 
-// AI抠图
+// AI抠图（动态加载库，按需加载）
 async function removeBackground() {
   if (!originalImage.value || isProcessing.value) return
 
@@ -299,6 +301,12 @@ async function removeBackground() {
   progressPercent.value = 0
 
   try {
+    // 动态加载抠图库（首次使用时才加载）
+    if (!backgroundRemoval) {
+      uploadSuccess.value = '正在加载AI抠图模型...'
+      backgroundRemoval = await import('@imgly/background-removal')
+    }
+
     // 将 base64 转换为 Blob
     const blob = await fetch(originalImage.value).then(r => r.blob())
     const file = new File([blob], 'pet.png', { type: 'image/png' })

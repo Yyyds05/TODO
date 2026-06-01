@@ -1173,6 +1173,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  z-index: 10;
+  pointer-events: auto;
 }
 
 .chat-close:hover {

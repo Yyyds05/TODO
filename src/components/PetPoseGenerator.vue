@@ -153,7 +153,7 @@ async function generatePoseWithStability(sourceImage, posePrompt, apiKey) {
     formData.append('height', '512')
     formData.append('style_preset', 'pixel-art') // 简洁风格
 
-    const response = await fetch('https://api.stability.ai/v1/generation/stable-diffusion-xl-1024/v1/image-to-image', {
+    const response = await fetch('https://api.stability.ai/v2beta/stable-image/generate/core', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -163,8 +163,9 @@ async function generatePoseWithStability(sourceImage, posePrompt, apiKey) {
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'API请求失败')
+      // 不抛出错误，静默失败使用原图
+      console.warn('Stability API响应异常:', response.status)
+      return null
     }
 
     const data = await response.json()

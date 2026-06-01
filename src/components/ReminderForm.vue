@@ -167,7 +167,9 @@ const aiError = ref('')
 function toggleAIInput() {
   const apiKey = safeGet('deepseek_api_key')
   if (!apiKey) {
-    alert('请先在设置页面配置DeepSeek API密钥')
+    aiError.value = '请先前往设置页配置 DeepSeek API 密钥'
+    // 3秒后自动清除提示
+    setTimeout(() => { aiError.value = '' }, 3000)
     return
   }
   showAIInput.value = !showAIInput.value

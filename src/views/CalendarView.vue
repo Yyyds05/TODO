@@ -141,8 +141,16 @@ function handleEditSaved() {
     
     <!-- 视图内容 -->
     <div class="calendar-content">
+      <!-- 空状态提示 -->
+      <div v-if="reminders.length === 0" class="calendar-empty">
+        <div class="empty-icon">📅</div>
+        <h3 class="empty-title">当前暂无提醒任务</h3>
+        <p class="empty-desc">创建提醒后，日历会自动显示任务标记</p>
+        <button class="empty-btn" @click="$router.push('/')">去创建提醒</button>
+      </div>
+      
       <WeekView 
-        v-if="mode === 'week'" 
+        v-else-if="mode === 'week'" 
         :current-date="currentDate"
         :reminders="reminders"
         @edit="handleEdit"
@@ -294,6 +302,51 @@ function handleEditSaved() {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+}
+
+/* 空状态样式 */
+.calendar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.empty-desc {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin: 0 0 24px 0;
+}
+
+.empty-btn {
+  padding: 10px 24px;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.empty-btn:hover {
+  background: #0056d6;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 640px) {
