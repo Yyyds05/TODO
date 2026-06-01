@@ -90,6 +90,36 @@
         <p class="pose-hint">桌宠会在屏幕内自由移动，碰到边界自动反弹</p>
       </div>
 
+      <!-- AI姿态生成 -->
+      <div class="ai-pose-section">
+        <h4>🎨 AI姿态生成</h4>
+        <div class="api-key-input">
+          <input
+            v-model="stabilityApiKey"
+            type="password"
+            placeholder="输入 Stability AI API 密钥..."
+            class="input"
+          />
+          <button class="btn btn-primary btn-sm" @click="saveStabilityKey">
+            保存
+          </button>
+        </div>
+        <p class="api-hint">用于生成宠物专属动作姿态（站立/行走/跳跃/趴卧）</p>
+        
+        <!-- 生成姿态按钮 -->
+        <button 
+          v-if="removedBgImage" 
+          class="btn btn-primary btn-full generate-btn"
+          @click="generateAiPoses"
+          :disabled="isGeneratingPoses"
+        >
+          {{ isGeneratingPoses ? '生成中...' : '✨ AI生成专属姿态' }}
+        </button>
+        
+        <!-- 姿态生成器组件 -->
+        <PetPoseGenerator ref="poseGeneratorRef" />
+      </div>
+
       <!-- 姿态动画开关 -->
       <div class="pose-toggle-section">
         <label class="pose-toggle">
@@ -111,6 +141,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { safeGet, safeSet, safeRemove } from '../utils/safeStorage.js'
 import * as backgroundRemoval from '@imgly/background-removal'
+import PetPoseGenerator from './PetPoseGenerator.vue'
 
 // 状态
 const currentImage = ref('')
@@ -127,6 +158,13 @@ const removeBgFailed = ref(false)
 const poseEnabled = ref(true)
 const roamingEnabled = ref(true)
 
+// Stability API 密钥
+const stabilityApiKey = ref('')
+
+// 姿态生成器引用
+const poseGeneratorRef = ref(null)
+const isGeneratingPoses = ref(false)
+
 // 姿态开关切换
 function togglePose() {
   safeSet('pet_pose_enabled', poseEnabled.value ? 'true' : 'false')
@@ -135,6 +173,32 @@ function togglePose() {
 // 游走开关切换
 function toggleRoaming() {
   safeSet('pet_roaming_enabled', roamingEnabled.value ? 'true' : 'false')
+}
+
+// 保存 Stability API 密钥
+function saveStabilityKey() {
+  if (stabilityApiKey.value.trim()) {
+    safeSet('stability_api_key', stabilityApiKey.value.trim())
+    uploadSuccess.value = '✅ Stability API 密钥已保存'
+    setTimeout(() => { uploadSuccess.value = '' }, 3000)
+  }
+}
+
+// 生成AI姿态
+async function generateAiPoses() {
+  if (!poseGeneratorRef.value || !removedBgImage.value) return
+  
+  isGeneratingPoses.value = true
+  uploadError.value = ''
+  
+  const success = await poseGeneratorRef.value.generatePoses(removedBgImage.value)
+  
+  isGeneratingPoses.value = false
+  
+  if (success) {
+    uploadSuccess.value = '✅ AI姿态已生成！桌宠现在会根据行为自动切换姿态'
+    setTimeout(() => { uploadSuccess.value = '' }, 5000)
+  }
 }
 
 // 显示的图片（根据切换状态）
@@ -156,6 +220,9 @@ onMounted(() => {
   
   // 读取游走开关状态（默认开启）
   roamingEnabled.value = safeGet('pet_roaming_enabled', 'true') === 'true'
+  
+  // 读取 Stability API 密钥
+  stabilityApiKey.value = safeGet('stability_api_key', '')
   
   // 当前显示的图片
   if (removedBgImage.value) {
@@ -664,5 +731,45 @@ function resetPet() {
   font-size: 12px;
   color: var(--text-tertiary);
   margin: 6px 0 0 56px;
+}
+
+/* AI姿态生成 */
+.ai-pose-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.ai-pose-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.api-key-input {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.api-key-input .input {
+  flex: 1;
+}
+
+.api-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0 0 12px 0;
+}
+
+.generate-btn {
+  margin-bottom: 12px;
+}
+
+.btn-full {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
 }
 </style>

@@ -30,7 +30,8 @@
           :class="['pose-' + currentPose, { 'pose-enabled': poseEnabled }]"
           @dblclick="openFullChat"
         >
-          <img v-if="petImage" :src="petImage" class="pet-img" draggable="false" />
+          <img v-if="displayPoseImage" :src="displayPoseImage" class="pet-img" draggable="false" />
+          <img v-else-if="petImage" :src="petImage" class="pet-img" draggable="false" />
           <div v-else class="pet-placeholder">
             <span>🐾</span>
             <p>设置你的桌宠</p>
@@ -166,6 +167,42 @@ const fullChatRef = ref(null)
 const petImage = ref('')
 const petImageRemoved = ref('')
 
+// ========== AI姿态系统 ==========
+const aiPoses = ref([])
+const useAiPoses = ref(false)
+
+// 姿态映射：行为 -> AI姿态名称
+const POSE_MAPPING = {
+  idle: '站立',    // 空闲/站立 -> 站立帧
+  walk: '行走',    // 行走/游走 -> 行走帧
+  rest: '跳跃',    // 互动/歪头 -> 跳跃帧
+  sleep: '趴卧'    // 休息 -> 趴卧帧
+}
+
+// 显示的姿态图片（根据当前姿态选择对应的AI生成图片）
+const displayPoseImage = computed(() => {
+  if (!useAiPoses.value || aiPoses.value.length === 0) return null
+  
+  const poseName = POSE_MAPPING[currentPose.value] || '站立'
+  const pose = aiPoses.value.find(p => p.name === poseName)
+  return pose ? pose.image : null
+})
+
+// 初始化AI姿态
+function initAiPoses() {
+  const savedPoses = safeGet('pet_ai_poses', '')
+  if (savedPoses) {
+    try {
+      aiPoses.value = JSON.parse(savedPoses)
+      useAiPoses.value = aiPoses.value.length > 0
+    } catch (e) {
+      console.warn('解析AI姿态失败:', e)
+      aiPoses.value = []
+      useAiPoses.value = false
+    }
+  }
+}
+
 // ========== 自主游走系统 ==========
 const roamingEnabled = ref(safeGet('pet_roaming_enabled', 'true') === 'true')
 let isRoaming = false
@@ -263,17 +300,18 @@ function stopRoaming() {
 }
 
 // ========== 姿态动画系统 ==========
-// 姿态类型：idle(站立) | walk(走路) | rest(休憩)
+// 姿态类型：idle(站立) | walk(走路) | rest(跳跃/互动) | sleep(趴卧)
 const currentPose = ref('idle')
 const poseEnabled = ref(safeGet('pet_pose_enabled', 'true') === 'true')
 let poseTimer = null
 let walkFrame = 0
 
-// 姿态配置
+// 姿态配置（4套姿态循环）
 const POSE_CONFIG = {
   idle: { name: '站立', duration: 3000, next: 'walk' },
-  walk: { name: '走路', duration: 180, next: 'rest', frames: 2 },
-  rest: { name: '休憩', duration: 4000, next: 'idle' }
+  walk: { name: '走路', duration: 2000, next: 'rest' },
+  rest: { name: '跳跃', duration: 2000, next: 'sleep' },
+  sleep: { name: '趴卧', duration: 4000, next: 'idle' }
 }
 
 // 开始姿态动画循环
@@ -332,6 +370,9 @@ function initPetImage() {
   } else {
     petImage.value = ''
   }
+  
+  // 初始化AI姿态
+  initAiPoses()
 }
 
 // 桌宠位置
@@ -410,6 +451,18 @@ onMounted(() => {
     if (removedImage !== petImageRemoved.value) {
       petImageRemoved.value = removedImage
       petImage.value = removedImage || originalImage
+    }
+    
+    // 检查AI姿态更新
+    const savedPoses = safeGet('pet_ai_poses', '')
+    if (savedPoses) {
+      try {
+        const newPoses = JSON.parse(savedPoses)
+        if (JSON.stringify(newPoses) !== JSON.stringify(aiPoses.value)) {
+          aiPoses.value = newPoses
+          useAiPoses.value = newPoses.length > 0
+        }
+      } catch (e) {}
     }
   }, 1000)
 
@@ -825,6 +878,16 @@ onMounted(() => {
   0%, 100% { transform: rotate(0deg) scale(1); }
   25% { transform: rotate(-8deg) scale(1.02); }
   75% { transform: rotate(5deg) scale(0.98); }
+}
+
+/* 趴卧姿态 */
+.pet-avatar.pose-enabled.pose-sleep .pet-img {
+  animation: poseSleep 4s ease-in-out infinite;
+}
+
+@keyframes poseSleep {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(0.95) translateY(2px); }
 }
 
 .pet-placeholder {
